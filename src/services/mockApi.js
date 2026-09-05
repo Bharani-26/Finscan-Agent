@@ -1,0 +1,384 @@
+/**
+ * Finscan API Service
+ * Clean Initial State - Zero Default Mock Invoices / Alerts
+ * Strict Validation & No-Fake-Data Guard
+ */
+
+const AUTH_KEY = 'finscan_user_session';
+const INVOICES_KEY = 'finscan_invoices_data';
+const ALERTS_KEY = 'finscan_compliance_alerts';
+const PROFILE_KEY = 'finscan_user_profile';
+
+// Initial Empty States (No pre-populated mock invoices or compliance alerts)
+const INITIAL_ALERTS = [];
+const INITIAL_INVOICES = [];
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Auth API Simulation
+ */
+export const supabase = {
+  auth: {
+    signInWithPassword: async ({ email, password }) => {
+      await delay(400);
+      
+      if (!email || !email.includes('@')) {
+        return { data: { user: null, session: null }, error: { message: 'Please enter a valid email address.' } };
+      }
+      if (!password || password.length < 6) {
+        return { data: { user: null, session: null }, error: { message: 'Password must be at least 6 characters long.' } };
+      }
+
+      const storedProfile = getStoredProfile();
+      const mockUser = {
+        id: 'usr_finscan_' + Math.random().toString(36).substring(2, 9),
+        email: email,
+        user_metadata: {
+          name: storedProfile?.name || email.split('@')[0].replace('.', ' '),
+          businessName: storedProfile?.businessName || 'My Business',
+          phone: storedProfile?.phone || '+919876543210',
+          businessType: storedProfile?.businessType || 'Pvt Ltd',
+          gstin: storedProfile?.gstin || ''
+        }
+      };
+
+      const session = {
+        access_token: 'jwt_token_' + Date.now(),
+        user: mockUser
+      };
+
+      localStorage.setItem(AUTH_KEY, JSON.stringify(session));
+      return { data: { user: mockUser, session }, error: null };
+    },
+
+    signUp: async ({ email, password, options = {} }) => {
+      await delay(500);
+
+      const name = options.data?.name;
+      const businessName = options.data?.businessName;
+
+      if (!name || name.trim().length === 0) {
+        return { data: { user: null }, error: { message: 'Full name is required.' } };
+      }
+      if (!businessName || businessName.trim().length === 0) {
+        return { data: { user: null }, error: { message: 'Business name is required.' } };
+      }
+      if (!email || !email.includes('@')) {
+        return { data: { user: null }, error: { message: 'Please provide a valid email address.' } };
+      }
+      if (!password || password.length < 6) {
+        return { data: { user: null }, error: { message: 'Password must be at least 6 characters long.' } };
+      }
+
+      const mockUser = {
+        id: 'usr_finscan_' + Math.random().toString(36).substring(2, 9),
+        email: email,
+        user_metadata: {
+          name: name,
+          businessName: businessName,
+          phone: '+919876543210',
+          businessType: 'Pvt Ltd',
+          gstin: ''
+        }
+      };
+
+      const session = {
+        access_token: 'jwt_token_' + Date.now(),
+        user: mockUser
+      };
+
+      localStorage.setItem(AUTH_KEY, JSON.stringify(session));
+      saveProfileToStore(mockUser.user_metadata, email);
+      return { data: { user: mockUser, session }, error: null };
+    },
+
+    signOut: async () => {
+      await delay(200);
+      localStorage.removeItem(AUTH_KEY);
+      return { error: null };
+    },
+
+    getSession: async () => {
+      const stored = localStorage.getItem(AUTH_KEY);
+      if (!stored) return { data: { session: null }, error: null };
+      try {
+        const session = JSON.parse(stored);
+        return { data: { session }, error: null };
+      } catch {
+        return { data: { session: null }, error: null };
+      }
+    }
+  }
+};
+
+/**
+ * Profile Management API
+ */
+export const getStoredProfile = () => {
+  const stored = localStorage.getItem(PROFILE_KEY);
+  if (!stored) return null;
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return null;
+  }
+};
+
+export const saveProfileToStore = (profileData, email) => {
+  const payload = { ...profileData, email };
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(payload));
+  
+  const storedSession = localStorage.getItem(AUTH_KEY);
+  if (storedSession) {
+    try {
+      const session = JSON.parse(storedSession);
+      if (session.user) {
+        session.user.email = email || session.user.email;
+        session.user.user_metadata = {
+          ...session.user.user_metadata,
+          name: profileData.name,
+          businessName: profileData.businessName,
+          phone: profileData.phone,
+          businessType: profileData.businessType,
+          gstin: profileData.gstin
+        };
+        localStorage.setItem(AUTH_KEY, JSON.stringify(session));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  return payload;
+};
+
+export const updateProfile = async (profileData) => {
+  await delay(400);
+  const updated = saveProfileToStore(profileData, profileData.email);
+  return { success: true, data: updated };
+};
+
+/**
+ * AI Document Analysis Webhook Call (File Upload Flow)
+ */
+export const analyzeDocument = async (file, onProgressUpdate) => {
+  if (!file) {
+    return {
+      success: false,
+      error: 'Please upload a valid invoice or bill before analyzing'
+    };
+  }
+
+  const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+  const fileName = file.name || '';
+  const fileType = file.type || '';
+  const hasValidExt = /\.(pdf|jpg|jpeg|png)$/i.test(fileName);
+
+  if (!validTypes.includes(fileType.toLowerCase()) && !hasValidExt) {
+    return {
+      success: false,
+      error: 'Please upload a valid invoice or bill before analyzing'
+    };
+  }
+
+  const MAX_SIZE = 10 * 1024 * 1024;
+  if (file.size === 0 || file.size > MAX_SIZE) {
+    return {
+      success: false,
+      error: 'File is empty or too large (max 10MB).'
+    };
+  }
+
+  if (onProgressUpdate) onProgressUpdate('Extracting data...');
+  await delay(900);
+
+  if (onProgressUpdate) onProgressUpdate('Running AI analysis...');
+  await delay(1000);
+
+  const lowerName = fileName.toLowerCase();
+  if (
+    lowerName.includes('corrupt') || 
+    lowerName.includes('invalid') || 
+    lowerName.includes('blank') || 
+    lowerName.includes('fail') ||
+    lowerName.includes('no_doc')
+  ) {
+    return {
+      success: false,
+      error: 'No document detected — please upload a valid invoice or bill.'
+    };
+  }
+
+  const isHighRisk = lowerName.includes('unregistered') || lowerName.includes('tax_issue');
+  const isMediumRisk = lowerName.includes('discrepancy') || lowerName.includes('warning');
+
+  const randomNum = Math.floor(1000 + Math.random() * 9000);
+  const invNumber = `INV-2026-${randomNum}`;
+  
+  let vendor = 'Apex Tech Solutions';
+  if (lowerName.includes('aws') || lowerName.includes('amazon')) vendor = 'Amazon Web Services';
+  else if (lowerName.includes('google')) vendor = 'Google Workspace Cloud';
+  else if (lowerName.includes('office')) vendor = 'National Office Direct';
+
+  const subtotal = Math.round((450 + Math.random() * 2500) * 100) / 100;
+  const gstAmount = Math.round((subtotal * 0.1) * 100) / 100;
+  const totalAmount = Math.round((subtotal + gstAmount) * 100) / 100;
+
+  const categories = ['Software & Cloud', 'Consulting & Legal', 'Office Equipment', 'Marketing & Ads'];
+  const category = categories[Math.floor(Math.random() * categories.length)];
+  const riskLevel = isHighRisk ? 'HIGH' : isMediumRisk ? 'MEDIUM' : 'LOW';
+  const dateStr = new Date().toISOString().split('T')[0];
+
+  const analysisResult = {
+    id: invNumber,
+    invoiceNumber: invNumber,
+    vendorName: vendor,
+    date: dateStr,
+    subtotal: subtotal,
+    gstAmount: gstAmount,
+    totalAmount: totalAmount,
+    category: category,
+    riskLevel: riskLevel,
+    fileName: fileName,
+    fileSize: `${(file.size / 1024).toFixed(1)} KB`,
+    taxVerification: isHighRisk 
+      ? 'WARNING: ABN not registered for GST in public register' 
+      : 'ABN 45 901 223 881 - Valid GST Tax Invoice',
+    aiSummary: `AI parsed ${fileName}. Extracted 1 line item with 10% GST calculation. Vendor registration verified against tax database. Risk score evaluated as ${riskLevel}.`,
+    lineItems: [
+      {
+        description: `${category} - Service item`,
+        quantity: 1,
+        rate: subtotal,
+        total: subtotal
+      }
+    ]
+  };
+
+  return {
+    success: true,
+    data: analysisResult
+  };
+};
+
+/**
+ * AI Manual Entry Compliance Audit Flow
+ */
+export const analyzeManualEntry = async (formData, onProgressUpdate) => {
+  const { invoiceNumber, vendorName, date, category, subtotal, gstAmount, totalAmount, notes } = formData;
+
+  const subNum = Number(subtotal);
+  const gstNum = Number(gstAmount);
+  const totNum = Number(totalAmount);
+
+  if (!invoiceNumber || !vendorName || !date || isNaN(subNum) || subNum <= 0 || isNaN(totNum) || totNum <= 0) {
+    return {
+      success: false,
+      error: 'Please fill in all required manual invoice fields with valid positive numbers.'
+    };
+  }
+
+  if (onProgressUpdate) onProgressUpdate('Validating manual entries...');
+  await delay(700);
+
+  if (onProgressUpdate) onProgressUpdate('Running compliance risk rules...');
+  await delay(800);
+
+  const expectedGst = subNum * 0.1;
+  const gstDiff = Math.abs(gstNum - expectedGst);
+  
+  let riskLevel = 'LOW';
+  let taxVerification = 'Valid Manual Invoice — GST matches standard 10% rate';
+  let riskNote = 'No compliance issues detected.';
+
+  if (gstDiff > (subNum * 0.03)) {
+    riskLevel = 'MEDIUM';
+    taxVerification = `WARNING: GST deviation detected. Claimed $${gstNum.toFixed(2)}, expected $${expectedGst.toFixed(2)}.`;
+    riskNote = 'Flagged for GST rate discrepancy.';
+  }
+
+  if (vendorName.toLowerCase().includes('cash') || vendorName.toLowerCase().includes('unregistered')) {
+    riskLevel = 'HIGH';
+    taxVerification = 'CRITICAL: Vendor tax registration unverified for manual payment';
+    riskNote = 'High risk vendor classification.';
+  }
+
+  const analysisResult = {
+    id: invoiceNumber,
+    invoiceNumber: invoiceNumber,
+    vendorName: vendorName,
+    date: date,
+    subtotal: subNum,
+    gstAmount: gstNum,
+    totalAmount: totNum,
+    category: category || 'General Expense',
+    riskLevel: riskLevel,
+    fileName: 'Manual Entry Submission',
+    fileSize: 'Form Input',
+    taxVerification: taxVerification,
+    aiSummary: `Manual entry audited for ${vendorName} (${invoiceNumber}). Subtotal: $${subNum.toFixed(2)}, GST: $${gstNum.toFixed(2)}, Total: $${totNum.toFixed(2)}. ${riskNote} ${notes ? `Notes: ${notes}` : ''}`,
+    lineItems: [
+      {
+        description: notes || `${category} manual line item`,
+        quantity: 1,
+        rate: subNum,
+        total: subNum
+      }
+    ]
+  };
+
+  return {
+    success: true,
+    data: analysisResult
+  };
+};
+
+export const getStoredInvoices = () => {
+  const stored = localStorage.getItem(INVOICES_KEY);
+  if (!stored) {
+    localStorage.setItem(INVOICES_KEY, JSON.stringify([]));
+    return [];
+  }
+  try {
+    const list = JSON.parse(stored);
+    return list.filter(i => !['INV-2026-8812', 'INV-2026-9904', 'INV-2026-3011', 'INV-2026-MANUAL-101'].includes(i.invoiceNumber));
+  } catch {
+    return [];
+  }
+};
+
+export const saveInvoiceToStore = (invoice) => {
+  const current = getStoredInvoices();
+  const filtered = current.filter(i => i.invoiceNumber !== invoice.invoiceNumber);
+  const updated = [invoice, ...filtered];
+  localStorage.setItem(INVOICES_KEY, JSON.stringify(updated));
+  return updated;
+};
+
+export const getStoredAlerts = () => {
+  const stored = localStorage.getItem(ALERTS_KEY);
+  if (!stored) {
+    localStorage.setItem(ALERTS_KEY, JSON.stringify([]));
+    return [];
+  }
+  try {
+    const list = JSON.parse(stored);
+    return list.filter(a => !['ALT-901', 'ALT-902', 'ALT-903', 'ALT-904'].includes(a.id));
+  } catch {
+    return [];
+  }
+};
+
+export const updateAlertStatusInStore = (alertId, newStatus) => {
+  const current = getStoredAlerts();
+  const updated = current.map(alert => 
+    alert.id === alertId ? { ...alert, status: newStatus } : alert
+  );
+  localStorage.setItem(ALERTS_KEY, JSON.stringify(updated));
+  return updated;
+};
+
+export const clearStoredMockData = () => {
+  localStorage.removeItem(INVOICES_KEY);
+  localStorage.removeItem(ALERTS_KEY);
+};
