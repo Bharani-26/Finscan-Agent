@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useFinGuard } from '../context/FinGuardContext';
-import { analyzeDocument, analyzeManualEntry } from '../services/mockApi';
+import { uploadAndProcessDocument } from '../services/api';
+import { analyzeManualEntry } from '../services/mockApi';
 import { 
   UploadCloud, 
   FileCheck, 
@@ -144,11 +145,8 @@ const Upload = () => {
       const results = [];
       for (const [index, file] of selectedFiles.entries()) {
         setStatusText(`Analyzing document ${index + 1} of ${selectedFiles.length}...`);
-        const response = await analyzeDocument(file, (progress) => setStatusText(progress));
-        if (!response?.success || !response.data) {
-          throw new Error(response?.error || `Could not analyze ${file.name}.`);
-        }
-        results.push(response.data);
+        const response = await uploadAndProcessDocument(file, 'usr_101', documentType);
+        results.push(response);
       }
 
       if (results.length > 0) {

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { ACCOUNTING_AGENT_PROMPT } from './accountingPrompt';
 
 // Load Vite Environment Variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -24,6 +25,7 @@ export async function uploadAndProcessDocument(file, userId = 'usr_101', documen
   const formData = new FormData();
   formData.append('user_id', userId);
   formData.append('document_type', documentType);
+  formData.append('accounting_instructions', ACCOUNTING_AGENT_PROMPT);
   formData.append('file', file);
 
   const response = await fetch(n8nWebhookUrl, {
