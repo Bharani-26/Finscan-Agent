@@ -10,7 +10,7 @@ import Profile from './pages/Profile';
 import LoadingSpinner from './components/LoadingSpinner';
 import TaxDashboard from './components/TaxDashboard';
 import UploadModal from './components/UploadModal';
-import { AlertCircle, CheckCircle2, Shield } from 'lucide-react';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const MainApp = () => {
   const { user, loadingAuth, activePage, toast } = useFinGuard();
@@ -44,20 +44,6 @@ const MainApp = () => {
     <div className="app-container">
       {/* Persistent Disclaimer Banner across all authenticated screens */}
       <DisclaimerBanner />
-
-      <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 px-4 py-3 backdrop-blur-md sm:px-6">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/10 text-emerald-400">
-              <Shield size={19} />
-            </div>
-            <div>
-              <p className="text-sm font-bold tracking-tight text-white">FinScan AI</p>
-              <p className="hidden text-[11px] text-slate-500 sm:block">Tax intelligence workspace</p>
-            </div>
-          </div>
-        </div>
-      </header>
 
       {/* Main Layout with Sidebar + Content */}
       <div className="main-layout">
