@@ -23,6 +23,12 @@ create index if not exists ledger_entries_entry_date_idx
 
 alter table public.ledger_entries enable row level security;
 
+drop policy if exists "Users can view their ledger entries"
+  on public.ledger_entries;
+
+drop policy if exists "Users can insert their ledger entries"
+  on public.ledger_entries;
+
 create policy "Users can view their ledger entries"
   on public.ledger_entries
   for select
