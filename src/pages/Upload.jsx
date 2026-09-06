@@ -74,6 +74,9 @@ const normalizeBatchResult = (response, file) => {
   const text = responseText(response);
   const ledgerRows = parseLedgerTable(text);
   const firstLedgerRow = ledgerRows[0] || {};
+  const firstDebit = amountValue(firstLedgerRow.debit);
+  const firstCredit = amountValue(firstLedgerRow.credit);
+  const transactionTypeFallback = firstDebit > 0 ? 'Payment' : firstCredit > 0 ? 'Receipt' : 'Unknown';
   return ({
   ...(Array.isArray(response) ? response[0] : response),
   fileName: file.name,
@@ -85,7 +88,7 @@ const normalizeBatchResult = (response, file) => {
   gstAmount: amountValue(responseValue(response, ['calculated_gst_amount', 'gst_amount', 'gstAmount'], textAmount(text, 'GST|GST Amount'))),
   totalAmount: amountValue(responseValue(response, ['total_amount', 'totalAmount', 'net_payable_amount', 'netPayable'], textAmount(text, 'Invoice Amount|Total Amount|Net Payable Amount'))),
   entryId: responseValue(response, ['entry_id', 'entryId'], textValue(text, 'Entry ID')),
-  transactionType: responseValue(response, ['transaction_type', 'transactionType'], textValue(text, 'Transaction Type')),
+  transactionType: responseValue(response, ['transaction_type', 'transactionType'], textValue(text, 'Transaction Type') !== 'Missing' ? textValue(text, 'Transaction Type') : transactionTypeFallback),
   description: responseValue(response, ['description', 'narrative'], textValue(text, 'Description/Narration|Description|Narration') !== 'Missing' ? textValue(text, 'Description/Narration|Description|Narration') : firstLedgerRow.narrative),
   invoiceDate: responseValue(response, ['invoice_date', 'invoiceDate'], textValue(text, 'Invoice Date')),
   partyGstin: responseValue(response, ['party_gstin', 'partyGstin', 'gstin'], textValue(text, 'Party GSTIN|GSTIN')),
@@ -101,13 +104,13 @@ const normalizeBatchResult = (response, file) => {
   tdsRate: responseValue(response, ['tds_rate', 'tdsRate'], textValue(text, 'TDS Rate')),
   tdsAmount: responseValue(response, ['tds_amount', 'tdsAmount'], textAmount(text, 'TDS Amount|TDS')),
   netPayable: responseValue(response, ['net_payable_amount', 'netPayable'], textAmount(text, 'Net Payable Amount|Net Payable')),
-  bankReference: responseValue(response, ['bank_reference', 'bankReference', 'reference'], textValue(text, 'Bank Reference|Reference')),
-  paymentDate: responseValue(response, ['payment_date', 'paymentDate'], textValue(text, 'Payment Date')),
-  debitAccount: responseValue(response, ['debit_account', 'debitAccount'], textValue(text, 'Debit Account')),
-  creditAccount: responseValue(response, ['credit_account', 'creditAccount'], textValue(text, 'Credit Account')),
+  bankReference: responseValue(response, ['bank_reference', 'bankReference', 'reference'], textValue(text, 'Bank Reference|Reference') !== 'Missing' ? textValue(text, 'Bank Reference|Reference') : firstLedgerRow.folio),
+  paymentDate: responseValue(response, ['payment_date', 'paymentDate'], textValue(text, 'Payment Date') !== 'Missing' ? textValue(text, 'Payment Date') : firstLedgerRow.date),
+  debitAccount: responseValue(response, ['debit_account', 'debitAccount'], textValue(text, 'Debit Account') !== 'Missing' ? textValue(text, 'Debit Account') : firstDebit > 0 ? 'Bank Account' : 'Missing'),
+  creditAccount: responseValue(response, ['credit_account', 'creditAccount'], textValue(text, 'Credit Account') !== 'Missing' ? textValue(text, 'Credit Account') : firstCredit > 0 ? 'Bank Account' : 'Missing'),
   reconciliationStatus: responseValue(response, ['reconciliation_status', 'reconciliationStatus'], textValue(text, 'Reconciliation Status')),
   complianceStatus: responseValue(response, ['compliance_status', 'complianceStatus'], textValue(text, 'Compliance Status')),
-  sourceDocument: responseValue(response, ['source_document', 'sourceDocument'], textValue(text, 'Source Document|Source Documentation')),
+  sourceDocument: responseValue(response, ['source_document', 'sourceDocument'], textValue(text, 'Source Document|Source Documentation') !== 'Missing' ? textValue(text, 'Source Document|Source Documentation') : 'Bank Statement'),
   aiSummary: text || 'No analysis text returned by the processor.',
   ledgerRows,
   });
