@@ -575,7 +575,7 @@ const Upload = () => {
                     }}
                   >
                     <Sparkles size={18} />
-                    <span>{panelState === 'loading' ? 'Analyzing...' : `Analyze ${selectedDocuments.length || ''} document${selectedDocuments.length === 1 ? '' : 's'}`}</span>
+                    <span>{panelState === 'loading' ? `Analyzing ${selectedDocuments.length} documents...` : selectedDocuments.length >= 3 ? 'Analyze 3 documents' : `Analyze ${selectedDocuments.length || ''} document${selectedDocuments.length === 1 ? '' : 's'}`}</span>
                   </button>
 
                   {selectedFiles.length > 0 && (
