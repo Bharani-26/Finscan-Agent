@@ -143,6 +143,7 @@ const Upload = () => {
   const [backendError, setBackendError] = useState(null);
 
   const fileInputRef = useRef(null);
+  const relatedDocumentsRef = useRef([]);
 
   // Immediate State Reset Rule
   const resetAnalysisState = () => {
@@ -257,8 +258,13 @@ const Upload = () => {
       const results = [];
       for (const [index, file] of selectedFiles.entries()) {
         setStatusText(`Analyzing document ${index + 1} of ${selectedFiles.length}...`);
-        const response = await uploadAndProcessDocument(file, 'usr_101', documentType);
+        const relatedDocuments = documentType === 'bank_statement'
+          ? relatedDocumentsRef.current.join('\n\n')
+          : '';
+        const response = await uploadAndProcessDocument(file, 'usr_101', documentType, relatedDocuments);
         results.push(normalizeBatchResult(response, file));
+        const analyzedText = responseText(response);
+        if (analyzedText) relatedDocumentsRef.current.push(`${documentType} (${file.name}):\n${analyzedText}`);
       }
 
       if (results.length > 0) {

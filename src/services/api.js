@@ -17,7 +17,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
  * @param {File} file - The uploaded PDF or Image invoice/bank statement.
  * @param {string} userId - User identifier (defaults to 'usr_101').
  */
-export async function uploadAndProcessDocument(file, userId = 'usr_101', documentType = 'invoice') {
+export async function uploadAndProcessDocument(file, userId = 'usr_101', documentType = 'invoice', relatedDocuments = '') {
   if (!n8nWebhookUrl) {
     throw new Error('VITE_N8N_WEBHOOK_URL is not defined in your .env file.');
   }
@@ -26,6 +26,7 @@ export async function uploadAndProcessDocument(file, userId = 'usr_101', documen
   formData.append('user_id', userId);
   formData.append('document_type', documentType);
   formData.append('accounting_instructions', ACCOUNTING_AGENT_PROMPT);
+  if (relatedDocuments) formData.append('related_documents', relatedDocuments);
   formData.append('file', file);
 
   const response = await fetch(n8nWebhookUrl, {

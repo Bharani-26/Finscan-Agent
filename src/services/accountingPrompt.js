@@ -19,6 +19,8 @@ Rules:
 Always include:
 Entry ID, date, transaction type, description/narration, invoice number, invoice date, party/vendor name, party GSTIN, account/ledger name, debit amount, credit amount, invoice amount, taxable value, GST rate, CGST, SGST, IGST, TDS section, TDS rate, TDS base, TDS amount, net payable amount, bank reference, payment date, debit accounts, credit accounts, reconciliation status, compliance status, source document, and final status.
 
+When related_documents is provided with a bank statement, use those prior invoice or credit-note results to populate the matching invoice, GST, TDS, vendor, and ledger fields. Match using invoice number, credit-note number, bank reference, amount, or date. Do not copy unrelated values. If no match exists, write Missing and explain the review requirement.
+
 Return the ledger as a Markdown table with these exact columns:
 Date | Particulars / Details | Debit | Credit | Folio / Reference | Description / Narrative | Running Balance
 `;
