@@ -59,6 +59,7 @@ const Upload = () => {
 
   // File Picker State
   const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploadMode, setUploadMode] = useState('individual');
   const [documentType, setDocumentType] = useState('debit_invoice');
   const [validationError, setValidationError] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -84,6 +85,14 @@ const Upload = () => {
     resetAnalysisState();
     setSelectedFiles([]);
     setValidationError(null);
+  };
+
+  const handleUploadModeChange = (mode) => {
+    setUploadMode(mode);
+    setSelectedFiles([]);
+    setValidationError(null);
+    resetAnalysisState();
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   // Client-Side Validation Function for Files
@@ -112,7 +121,7 @@ const Upload = () => {
   // Handle File Selection
   const handleFileSelect = (files) => {
     resetAnalysisState();
-    const nextFiles = Array.from(files || []);
+    const nextFiles = Array.from(files || []).slice(0, uploadMode === 'individual' ? 1 : undefined);
 
     if (nextFiles.length === 0) {
       setSelectedFiles([]);
@@ -348,6 +357,28 @@ const Upload = () => {
                   <option value="bank_statement">Bank Statement</option>
                 </select>
 
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                  {[
+                    ['individual', 'Individual document'],
+                    ['multiple', 'Multiple documents'],
+                  ].map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => handleUploadModeChange(mode)}
+                      className="btn btn-sm btn-secondary"
+                      style={{
+                        flex: 1,
+                        borderColor: uploadMode === mode ? 'var(--border-emerald)' : undefined,
+                        backgroundColor: uploadMode === mode ? 'rgba(16, 185, 129, 0.12)' : undefined,
+                        color: uploadMode === mode ? 'var(--emerald-400)' : undefined,
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
                 {/* Drag & Drop Area */}
                 <div
                   onDragOver={handleDragOver}
@@ -369,7 +400,7 @@ const Upload = () => {
                     ref={fileInputRef}
                     style={{ display: 'none' }}
                     accept=".pdf,application/pdf"
-                    multiple
+                    multiple={uploadMode === 'multiple'}
                     onChange={(e) => {
                       if (e.target.files && e.target.files.length > 0) {
                         handleFileSelect(e.target.files);
@@ -404,7 +435,7 @@ const Upload = () => {
                         Drag & drop invoice here, or <span className="text-emerald">browse</span>
                       </p>
                       <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
-                        Supports multiple PDF files (Max 10MB each)
+                        {uploadMode === 'individual' ? 'One PDF file (Max 10MB)' : 'Multiple PDF files (Max 10MB each)'}
                       </p>
                     </div>
                   )}
