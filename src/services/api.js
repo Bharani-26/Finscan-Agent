@@ -35,7 +35,16 @@ export async function uploadAndProcessDocument(file, userId = 'usr_101', documen
     throw new Error(`n8n Webhook Error [HTTP ${response.status}]: ${response.statusText}`);
   }
 
-  return response.json();
+  const responseText = await response.text();
+  if (!responseText.trim()) {
+    throw new Error('The document processor returned an empty response. Check the n8n Respond to Webhook node.');
+  }
+
+  try {
+    return JSON.parse(responseText);
+  } catch {
+    throw new Error('The document processor returned invalid JSON. Check the n8n webhook response.');
+  }
 }
 
 /**
