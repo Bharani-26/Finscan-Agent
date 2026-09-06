@@ -112,8 +112,14 @@ const normalizeBatchResult = (response, file) => {
 };
 
 const textValue = (text, label) => {
-  const match = String(text || '').match(new RegExp(`${label}\\s*:?\\s*([^\\n|]+)`, 'i'));
-  return match && typeof match[1] === 'string' ? match[1].trim().replace(/^\*+|\*+$/g, '') : 'Missing';
+  const labels = label.split('|').map((item) => item.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const lines = String(text || '').replace(/\\n/g, '\n').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const labelPattern = labels.join('|');
+  const match = lines
+    .map((line) => line.replace(/^[-*#\s]+|\*+/g, '').trim())
+    .map((line) => line.match(new RegExp(`^(?:${labelPattern})\\s*:?\\s*(?:[-–]\\s*)?(.*)$`, 'i')))
+    .find(Boolean);
+  return match && typeof match[1] === 'string' && match[1].trim() ? match[1].trim() : 'Missing';
 };
 
 const Upload = () => {
