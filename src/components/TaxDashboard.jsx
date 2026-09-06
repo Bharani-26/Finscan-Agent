@@ -69,15 +69,15 @@ const ledgerEntryData = (entry) => ({
 const ledgerMoney = (value) => value === null || value === undefined || value === '' ? 'Missing' : money(value);
 
 const Metric = ({ label, value, detail, icon: Icon, tone }) => (
-  <article className="group relative overflow-hidden rounded-2xl border border-slate-800/90 bg-slate-900/80 p-5 shadow-xl shadow-slate-950/20 transition hover:-translate-y-0.5 hover:border-slate-700">
-    <div className={`absolute -right-8 -top-8 h-24 w-24 rounded-full blur-3xl ${tone}`} />
+  <article className={`dashboard-metric group relative overflow-hidden rounded-2xl border border-slate-800/90 bg-slate-900/80 p-5 shadow-xl shadow-slate-950/20 transition hover:-translate-y-0.5 hover:border-slate-700 ${tone}`}>
+    <div className="dashboard-metric__glow" />
     <div className="relative flex items-start justify-between">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</p>
         <p className="mt-3 text-2xl font-bold tracking-tight text-white">{value}</p>
         <p className="mt-1 text-xs text-slate-500">{detail}</p>
       </div>
-      <span className={`flex h-10 w-10 items-center justify-center rounded-xl border border-white/5 bg-white/[0.04] ${tone.replace('bg-', 'text-')}`}>
+      <span className="dashboard-metric__icon flex h-10 w-10 items-center justify-center rounded-xl border border-white/5 bg-white/[0.04]">
         <Icon size={19} />
       </span>
     </div>
@@ -131,8 +131,8 @@ export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
   const hasRecords = invoices.length > 0 || bankStatements.length > 0 || ledgerEntries.length > 0;
 
   return (
-    <main className="min-h-full overflow-hidden rounded-[28px] border border-slate-800/80 bg-[radial-gradient(circle_at_top_right,rgba(79,70,229,0.12),transparent_32%),#070b14] p-5 text-slate-100 shadow-2xl shadow-slate-950/30 sm:p-8">
-      <header className="mb-8 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+    <main className="dashboard-shell min-h-full overflow-hidden rounded-[28px] border border-slate-800/80 p-5 text-slate-100 shadow-2xl shadow-slate-950/30 sm:p-8">
+      <header className="dashboard-hero mb-8 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
         <div>
           <div className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-300">
             <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-500/15"><Sparkles size={13} /></span>
@@ -141,7 +141,7 @@ export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
           <h1 className="text-3xl font-bold tracking-[-0.03em] text-white sm:text-4xl">Tax & accounting ledger</h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">A clear view of your tax position, document flow, and ledger-ready transactions.</p>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="dashboard-actions flex flex-wrap gap-3">
           <button type="button" onClick={loadData} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-2.5 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> Refresh data
           </button>
@@ -151,14 +151,14 @@ export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
         </div>
       </header>
 
-      <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric label="Total tax liability" value={money(totals.gst - totals.tds)} detail="GST payable after TDS" icon={ArrowUpRight} tone="bg-emerald-400" />
-        <Metric label="GST claimable" value={money(totals.gst)} detail="Input tax credit identified" icon={ReceiptIndianRupee} tone="bg-indigo-400" />
-        <Metric label="TDS deducted" value={money(totals.tds)} detail="Withholding tax recorded" icon={Banknote} tone="bg-amber-400" />
-        <Metric label="Documents processed" value={invoices.length + bankStatements.length} detail="Invoices and statements" icon={FileText} tone="bg-sky-400" />
+      <section className="dashboard-metrics mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Metric label="Total tax liability" value={money(totals.gst - totals.tds)} detail="GST payable after TDS" icon={ArrowUpRight} tone="metric-emerald" />
+        <Metric label="GST claimable" value={money(totals.gst)} detail="Input tax credit identified" icon={ReceiptIndianRupee} tone="metric-indigo" />
+        <Metric label="TDS deducted" value={money(totals.tds)} detail="Withholding tax recorded" icon={Banknote} tone="metric-amber" />
+        <Metric label="Documents processed" value={invoices.length + bankStatements.length} detail="Invoices and statements" icon={FileText} tone="metric-sky" />
       </section>
 
-      <section className="rounded-2xl border border-slate-800/90 bg-slate-900/50 p-2 shadow-xl shadow-slate-950/20">
+      <section className="dashboard-tabs rounded-2xl border border-slate-800/90 bg-slate-900/50 p-2 shadow-xl shadow-slate-950/20">
         <nav className="flex gap-1 overflow-x-auto" aria-label="Ledger views">
           <Tab active={activeTab === 'tax'} onClick={() => setActiveTab('tax')} icon={ReceiptIndianRupee}>Tax breakdown</Tab>
           <Tab active={activeTab === 'bank'} onClick={() => setActiveTab('bank')} icon={ArrowDownLeft}>Bank reconciliation</Tab>
@@ -191,7 +191,7 @@ const EmptyState = ({ onOpenUpload }) => (
 );
 
 const TableShell = ({ title, subtitle, count, children }) => (
-  <section className="mt-5 overflow-hidden rounded-2xl border border-slate-800/90 bg-slate-900/65">
+  <section className="dashboard-table mt-5 overflow-hidden rounded-2xl border border-slate-800/90 bg-slate-900/65">
     <div className="flex flex-col justify-between gap-2 border-b border-slate-800 px-5 py-4 sm:flex-row sm:items-center">
       <div><h2 className="font-semibold text-white">{title}</h2><p className="mt-1 text-xs text-slate-500">{subtitle}</p></div>
       <span className="w-fit rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-xs font-semibold text-slate-400">{count} records</span>
