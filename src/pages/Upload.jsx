@@ -480,6 +480,16 @@ const Upload = () => {
                   ))}
                 </div>
 
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="btn btn-secondary"
+                  style={{ width: '100%', marginBottom: '1rem', borderColor: 'var(--border-emerald)', color: 'var(--emerald-400)', background: 'rgba(16, 185, 129, 0.08)' }}
+                >
+                  <UploadCloud size={16} />
+                  Analyze three documents together
+                </button>
+
                 {/* Drag & Drop Area */}
                 <div
                   onDragOver={handleDragOver}
