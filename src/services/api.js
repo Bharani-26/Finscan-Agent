@@ -34,7 +34,8 @@ export async function uploadAndProcessDocument(file, userId = 'usr_101', documen
   });
 
   if (!response.ok) {
-    throw new Error(`n8n Webhook Error [HTTP ${response.status}]: ${response.statusText}`);
+    const errorBody = await response.text();
+    throw new Error(`n8n Webhook Error [HTTP ${response.status}]: ${errorBody || response.statusText}`);
   }
 
   const responseText = await response.text();

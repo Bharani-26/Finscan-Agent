@@ -195,7 +195,7 @@ const Upload = () => {
       }
     } catch (error) {
       setAnalysisResult(null);
-      setBackendError('Failed to process document due to a server error.');
+      setBackendError(error?.message || 'Failed to process document due to a server error.');
       setPanelState('failure');
     }
   };
