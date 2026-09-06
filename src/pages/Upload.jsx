@@ -139,6 +139,7 @@ const Upload = () => {
 
   // File Picker State
   const [selectedFiles, setSelectedFiles] = useState([]);
+  const [selectedDocuments, setSelectedDocuments] = useState([]);
   const [documentType, setDocumentType] = useState('debit_invoice');
   const [validationError, setValidationError] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -171,6 +172,7 @@ const Upload = () => {
   const handleDocumentTypeChange = (type) => {
     setDocumentType(type);
     setSelectedFiles([]);
+    setSelectedDocuments([]);
     setValidationError(null);
     resetAnalysisState();
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -206,6 +208,7 @@ const Upload = () => {
 
     if (nextFiles.length === 0) {
       setSelectedFiles([]);
+      setSelectedDocuments([]);
       setValidationError(null);
       return;
     }
@@ -213,11 +216,23 @@ const Upload = () => {
     const err = nextFiles.map(validateFile).find(Boolean);
     if (err) {
       setSelectedFiles([]);
+      setSelectedDocuments([]);
       setValidationError(err);
     } else {
       setSelectedFiles(nextFiles);
+      setSelectedDocuments(nextFiles.map((file) => ({
+        file,
+        documentType: nextFiles.length === 1 ? documentType : inferDocumentType(file.name),
+      })));
       setValidationError(null);
     }
+  };
+
+  const inferDocumentType = (fileName) => {
+    const name = String(fileName).toLowerCase();
+    if (name.includes('bank') || name.includes('statement')) return 'bank_statement';
+    if (name.includes('credit') || name.includes('credit-note') || name.includes('cn-')) return 'credit_invoice';
+    return 'debit_invoice';
   };
 
   // Drag & Drop
@@ -241,6 +256,7 @@ const Upload = () => {
   // Clear Selected File
   const handleClearFile = () => {
     setSelectedFiles([]);
+    setSelectedDocuments([]);
     setValidationError(null);
     resetAnalysisState();
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -248,12 +264,12 @@ const Upload = () => {
 
   // Handle Analyze Document Submission (File Flow)
   const handleAnalyzeClick = async () => {
-    if (selectedFiles.length === 0) {
+    if (selectedDocuments.length === 0) {
       setValidationError('Choose at least one PDF file before analyzing.');
       return;
     }
 
-    const err = selectedFiles.map(validateFile).find(Boolean);
+    const err = selectedDocuments.map(({ file }) => validateFile(file)).find(Boolean);
     if (err) {
       setValidationError(err);
       return;
@@ -264,13 +280,14 @@ const Upload = () => {
 
     try {
       const results = [];
-      for (const [index, file] of selectedFiles.entries()) {
-        setStatusText(`Analyzing document ${index + 1} of ${selectedFiles.length}...`);
-        const relatedDocuments = documentType === 'bank_statement'
+      for (const [index, document] of selectedDocuments.entries()) {
+        const { file, documentType: selectedDocumentType } = document;
+        setStatusText(`Analyzing document ${index + 1} of ${selectedDocuments.length}...`);
+        const relatedDocuments = selectedDocumentType === 'bank_statement'
           ? relatedDocumentsRef.current.join('\n\n')
           : '';
-        const response = await uploadAndProcessDocument(file, 'usr_101', documentType, relatedDocuments);
-        results.push(normalizeBatchResult(response, file, documentType));
+        const response = await uploadAndProcessDocument(file, 'usr_101', selectedDocumentType, relatedDocuments);
+        results.push(normalizeBatchResult(response, file, selectedDocumentType));
         const analyzedText = responseText(response);
         if (analyzedText) relatedDocumentsRef.current.push(`${documentType} (${file.name}):\n${analyzedText}`);
       }
@@ -357,7 +374,7 @@ const Upload = () => {
     }
   };
 
-  const isAnalyzeDisabled = selectedFiles.length === 0 || Boolean(validationError) || panelState === 'loading';
+  const isAnalyzeDisabled = selectedDocuments.length === 0 || Boolean(validationError) || panelState === 'loading';
 
   return (
     <div>
@@ -484,6 +501,7 @@ const Upload = () => {
                     ref={fileInputRef}
                     style={{ display: 'none' }}
                     accept=".pdf,application/pdf"
+                    multiple
                     onChange={(e) => {
                       if (e.target.files && e.target.files.length > 0) {
                         handleFileSelect(e.target.files);
@@ -557,7 +575,7 @@ const Upload = () => {
                     }}
                   >
                     <Sparkles size={18} />
-                    <span>{panelState === 'loading' ? 'Analyzing...' : 'Analyze Document'}</span>
+                    <span>{panelState === 'loading' ? 'Analyzing...' : `Analyze ${selectedDocuments.length || ''} document${selectedDocuments.length === 1 ? '' : 's'}`}</span>
                   </button>
 
                   {selectedFiles.length > 0 && (
@@ -672,7 +690,7 @@ const Upload = () => {
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <ErrorMessage
                 message={backendError}
-                onRetry={selectedFiles.length > 0 ? handleAnalyzeClick : null}
+                onRetry={selectedDocuments.length > 0 ? handleAnalyzeClick : null}
               />
               <p style={{ fontSize: '0.78rem', color: 'var(--text-dim)', textAlign: 'center', marginTop: '1rem' }}>
                 Strict No-Fake-Data Guard: No placeholder data rendered on failed analysis.
