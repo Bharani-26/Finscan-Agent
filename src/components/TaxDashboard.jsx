@@ -92,7 +92,7 @@ const Tab = ({ active, icon: Icon, children, onClick }) => (
 );
 
 export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
-  const [activeTab, setActiveTab] = useState('ledger');
+  const [activeTab, setActiveTab] = useState('tax');
   const [invoices, setInvoices] = useState([]);
   const [bankStatements, setBankStatements] = useState([]);
   const [ledgerEntries, setLedgerEntries] = useState([]);
@@ -160,7 +160,6 @@ export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
 
       <section className="rounded-2xl border border-slate-800/90 bg-slate-900/50 p-2 shadow-xl shadow-slate-950/20">
         <nav className="flex gap-1 overflow-x-auto" aria-label="Ledger views">
-          <Tab active={activeTab === 'ledger'} onClick={() => setActiveTab('ledger')} icon={FileText}>Ledger journal</Tab>
           <Tab active={activeTab === 'tax'} onClick={() => setActiveTab('tax')} icon={ReceiptIndianRupee}>Tax breakdown</Tab>
           <Tab active={activeTab === 'bank'} onClick={() => setActiveTab('bank')} icon={ArrowDownLeft}>Bank reconciliation</Tab>
         </nav>
