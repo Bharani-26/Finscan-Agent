@@ -44,9 +44,28 @@ const getResponseValue = (response, keys, fallback = 'Not available') => {
   return fallback;
 };
 
+const getResponseText = (response) => {
+  const unwrappedResponse = Array.isArray(response) ? response[0] : response;
+  if (typeof unwrappedResponse === 'string') return unwrappedResponse;
+  const text = getResponseValue(unwrappedResponse, ['rawText', 'output', 'text', 'response', 'content'], '');
+  return typeof text === 'string' ? text : '';
+};
+
+const getTextField = (text, labels) => {
+  const match = String(text).match(new RegExp(`(?:${labels.join('|')})\\s*:?\\s*([^\\n|]+)`, 'i'));
+  return match ? match[1].trim().replace(/^\*+|\*+$/g, '') : 'Not available';
+};
+
+const getTextAmount = (text, labels) => {
+  const value = getTextField(text, labels).replace(/[^\d.-]/g, '');
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : 'Not available';
+};
+
 const getLedgerRows = (response) => {
   const unwrappedResponse = Array.isArray(response) ? response[0] : response;
-  if (unwrappedResponse?.rawText) return parseLedgerText(unwrappedResponse.rawText);
+  const responseText = getResponseText(unwrappedResponse);
+  if (responseText) return parseLedgerText(responseText);
   const sources = [
     unwrappedResponse,
     unwrappedResponse?.data,
@@ -97,8 +116,10 @@ const getComplianceFlags = (response) => {
   return typeof flags === 'object' && flags !== null ? flags : {};
 };
 
-const getSummary = (response) => ({
-  rawText: response?.rawText || '',
+const getSummary = (response) => {
+  const responseText = getResponseText(response);
+  return ({
+  rawText: responseText,
   documentType: getResponseValue(response, ['document_type', 'documentType', 'type']),
   ledgerCategory: getResponseValue(response, [
     'gl_ledger_category',
@@ -111,24 +132,25 @@ const getSummary = (response) => ({
     'calculatedGstAmount',
     'gst_amount',
     'gstAmount',
-  ]),
-  tdsAmount: getResponseValue(response, ['tds_amount', 'tdsAmount']),
-  totalAmount: getResponseValue(response, ['total_amount', 'totalAmount']),
-  invoiceNumber: getResponseValue(response, ['invoice_number', 'invoiceNumber']),
-  vendor: getResponseValue(response, ['vendor_customer', 'vendor', 'vendor_name', 'vendorName']),
-  date: getResponseValue(response, ['invoice_date', 'invoiceDate', 'date']),
-  subtotal: getResponseValue(response, ['subtotal', 'taxable_amount', 'taxableAmount']),
+  ], getTextAmount(responseText, ['GST', 'GST Amount'])),
+  tdsAmount: getResponseValue(response, ['tds_amount', 'tdsAmount'], getTextAmount(responseText, ['TDS', 'TDS Amount'])),
+  totalAmount: getResponseValue(response, ['total_amount', 'totalAmount'], getTextAmount(responseText, ['Invoice Amount', 'Total Amount', 'Net Payable Amount'])),
+  invoiceNumber: getResponseValue(response, ['invoice_number', 'invoiceNumber'], getTextField(responseText, ['Invoice Number'])),
+  vendor: getResponseValue(response, ['vendor_customer', 'vendor', 'vendor_name', 'vendorName'], getTextField(responseText, ['Vendor Name', 'Vendor', 'Customer'])),
+  date: getResponseValue(response, ['invoice_date', 'invoiceDate', 'date'], getTextField(responseText, ['Date'])),
+  subtotal: getResponseValue(response, ['subtotal', 'taxable_amount', 'taxableAmount'], getTextAmount(responseText, ['Taxable Value', 'Subtotal'])),
   paymentStatus: getResponseValue(response, ['payment_status', 'paymentStatus']),
-  totalDebit: getResponseValue(response, ['total_debit', 'totalDebit']),
-  totalCredit: getResponseValue(response, ['total_credit', 'totalCredit']),
-  balanceCheck: getResponseValue(response, ['balance_check', 'balanceCheck']),
+  totalDebit: getResponseValue(response, ['total_debit', 'totalDebit'], getTextAmount(responseText, ['Total Debit'])),
+  totalCredit: getResponseValue(response, ['total_credit', 'totalCredit'], getTextAmount(responseText, ['Total Credit'])),
+  balanceCheck: getResponseValue(response, ['balance_check', 'balanceCheck'], getTextField(responseText, ['Balance Check'])),
   bankTransactionFound: getResponseValue(response, ['bank_transaction_found', 'bankTransactionFound']),
   matchingStatus: getResponseValue(response, ['matching_status', 'matchingStatus']),
   difference: getResponseValue(response, ['difference', 'reconciliation_difference']),
   finalStatus: getResponseValue(response, ['final_status', 'finalStatus', 'status']),
   ledgerRows: getLedgerRows(response),
   complianceFlags: getComplianceFlags(response),
-});
+  });
+};
 
 const numericAmount = (value) => {
   const amount = Number(String(value).replace(/[^\d.-]/g, ''));
