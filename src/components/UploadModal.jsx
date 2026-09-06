@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { insertLedgerEntries, uploadAndProcessDocument } from '../services/api';
 
-const ACCEPTED_FILE_TYPES = 'application/pdf,image/jpeg,image/png,image/webp';
+const ACCEPTED_FILE_TYPES = 'application/pdf';
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const PROCESSING_STAGES = [
   'Uploading document securely',
@@ -171,10 +171,10 @@ const UploadModal = ({ onClose, onUploadSuccess, userId: authenticatedUserId }) 
   }, [isProcessing]);
 
   const validateFile = (file) => {
-    if (!file) return 'Choose a PDF or image file to continue.';
-    const validExtension = /\.(pdf|jpe?g|png|webp)$/i.test(file.name);
-    if (!file.type.startsWith('image/') && file.type !== 'application/pdf' && !validExtension) {
-      return 'Only PDF, JPG, PNG, or WEBP files are supported.';
+    if (!file) return 'Choose a PDF file to continue.';
+    const validExtension = /\.pdf$/i.test(file.name);
+    if (file.type !== 'application/pdf' && !validExtension) {
+      return 'Only PDF files are supported.';
     }
     if (file.size === 0) return 'This file is empty.';
     if (file.size > MAX_FILE_SIZE) return 'Files must be smaller than 10 MB.';
@@ -318,7 +318,7 @@ const UploadModal = ({ onClose, onUploadSuccess, userId: authenticatedUserId }) 
                 <UploadCloud size={24} aria-hidden="true" />
               </span>
               <span className="font-semibold text-slate-100">Drop your document here</span>
-              <span className="mt-1 text-sm text-slate-400">or click to browse PDF, JPG, PNG, or WEBP</span>
+              <span className="mt-1 text-sm text-slate-400">or click to browse a PDF file</span>
               <span className="mt-3 text-xs text-slate-500">Maximum file size: 10 MB</span>
             </button>
           ) : (
