@@ -49,6 +49,27 @@ const textAmount = (text, label) => {
   return match ? amountValue(match[1]) : 0;
 };
 
+const parseLedgerTable = (text) => {
+  const lines = String(text || '').split(/\r?\n/).map((line) => line.trim()).filter((line) => line.includes('|'));
+  if (lines.length < 2) return [];
+  const split = (line) => line.replace(/^\|\s*|\s*\|$/g, '').split('|').map((cell) => cell.trim());
+  const headers = split(lines[0]).map((header) => header.toLowerCase().replace(/[^a-z]+/g, ''));
+  return lines.slice(1).filter((line) => !split(line).every((cell) => /^:?-{3,}:?$/.test(cell))).map((line) => {
+    const cells = split(line);
+    return headers.reduce((row, header, index) => {
+      const value = cells[index] || 'Missing';
+      if (header.includes('date')) row.date = value;
+      else if (header.includes('particular') || header.includes('detail') || header.includes('account')) row.particulars = value;
+      else if (header.includes('debit')) row.debit = value;
+      else if (header.includes('credit')) row.credit = value;
+      else if (header.includes('folio') || header.includes('reference')) row.folio = value;
+      else if (header.includes('description') || header.includes('narrative')) row.narrative = value;
+      else if (header.includes('balance')) row.balance = value;
+      return row;
+    }, {});
+  });
+};
+
 const normalizeBatchResult = (response, file) => {
   const text = responseText(response);
   return ({
@@ -61,6 +82,7 @@ const normalizeBatchResult = (response, file) => {
   gstAmount: amountValue(responseValue(response, ['calculated_gst_amount', 'gst_amount', 'gstAmount'], textAmount(text, 'GST|GST Amount'))),
   totalAmount: amountValue(responseValue(response, ['total_amount', 'totalAmount', 'net_payable_amount', 'netPayable'], textAmount(text, 'Invoice Amount|Total Amount|Net Payable Amount'))),
   aiSummary: text || 'No analysis text returned by the processor.',
+  ledgerRows: parseLedgerTable(text),
   });
 };
 
@@ -721,6 +743,40 @@ const Upload = () => {
                   {analysisResult.aiSummary}
                 </p>
               </div>
+
+              {analysisResult.ledgerRows?.length > 0 && (
+                <div style={{ marginBottom: '1.5rem', overflowX: 'auto', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)' }}>
+                  <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid var(--border-subtle)' }}>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Ledger Entries</span>
+                  </div>
+                  <table className="table" style={{ minWidth: '760px' }}>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Particulars / Details</th>
+                        <th style={{ textAlign: 'right' }}>Debit (₹)</th>
+                        <th style={{ textAlign: 'right' }}>Credit (₹)</th>
+                        <th>Folio / Reference</th>
+                        <th>Description / Narrative</th>
+                        <th style={{ textAlign: 'right' }}>Running Balance (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {analysisResult.ledgerRows.map((row, index) => (
+                        <tr key={`${row.particulars || 'entry'}-${index}`}>
+                          <td>{row.date || 'Missing'}</td>
+                          <td>{row.particulars || 'Missing'}</td>
+                          <td className="mono" style={{ textAlign: 'right' }}>{row.debit || 'Missing'}</td>
+                          <td className="mono" style={{ textAlign: 'right' }}>{row.credit || 'Missing'}</td>
+                          <td>{row.folio || 'Missing'}</td>
+                          <td>{row.narrative || 'Missing'}</td>
+                          <td className="mono" style={{ textAlign: 'right' }}>{row.balance || 'Missing'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
               {/* Save CTA */}
               <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
