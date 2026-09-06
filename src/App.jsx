@@ -10,7 +10,7 @@ import Profile from './pages/Profile';
 import LoadingSpinner from './components/LoadingSpinner';
 import TaxDashboard from './components/TaxDashboard';
 import UploadModal from './components/UploadModal';
-import { AlertCircle, CheckCircle2, Shield, UploadCloud } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Shield } from 'lucide-react';
 
 const MainApp = () => {
   const { user, loadingAuth, activePage, toast } = useFinGuard();
@@ -56,14 +56,6 @@ const MainApp = () => {
               <p className="hidden text-[11px] text-slate-500 sm:block">Tax intelligence workspace</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setIsUploadModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-3.5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:ring-offset-2 focus:ring-offset-slate-950"
-          >
-            <UploadCloud size={17} />
-            <span>Upload Document</span>
-          </button>
         </div>
       </header>
 
