@@ -45,8 +45,14 @@ const amountValue = (value) => {
 };
 
 const textAmount = (text, label) => {
-  const match = String(text || '').match(new RegExp(`${label}\\s*:?\\s*[₹$]?\\s*([\\d,]+(?:\\.\\d+)?)`, 'i'));
+  const match = String(text || '').match(new RegExp(`(?:${label})\\s*:?\\s*(?:[^\\d\\n]*?)₹?\\s*([\\d,]+(?:\\.\\d+)?)`, 'i'));
   return match ? amountValue(match[1]) : 0;
+};
+
+const exactTextValue = (text, label) => {
+  const normalized = String(text || '').replace(/\\n/g, '\n').replace(/\*+/g, '');
+  const match = normalized.match(new RegExp(`(?:^|\\n|\\|)\\s*${label}\\s*:?\\s*([^\\n|]+)`, 'im'));
+  return match?.[1]?.trim() || 'Missing';
 };
 
 const parseLedgerTable = (text) => {
@@ -97,14 +103,14 @@ const normalizeBatchResult = (response, file, documentType = 'document') => {
   taxableAmount: amountValue(responseValue(response, ['taxable_amount', 'taxableAmount'], textAmount(text, 'Taxable Amount|Taxable Value'))),
   debitAmount: responseValue(response, ['debit_amount', 'debitAmount'], textAmount(text, 'Debit Amount') || firstLedgerRow.debit),
   creditAmount: responseValue(response, ['credit_amount', 'creditAmount'], textAmount(text, 'Credit Amount') || firstLedgerRow.credit),
-  gstRate: responseValue(response, ['gst_rate', 'gstRate'], textValue(text, 'GST Rate')),
+  gstRate: responseValue(response, ['gst_rate', 'gstRate'], exactTextValue(text, 'GST Rate')),
   cgst: responseValue(response, ['cgst'], textAmount(text, 'CGST')),
   sgst: responseValue(response, ['sgst'], textAmount(text, 'SGST')),
   igst: responseValue(response, ['igst'], textAmount(text, 'IGST')),
-  tdsSection: responseValue(response, ['tds_section', 'tdsSection'], textValue(text, 'TDS Section')),
-  tdsRate: responseValue(response, ['tds_rate', 'tdsRate'], textValue(text, 'TDS Rate')),
-  tdsAmount: responseValue(response, ['tds_amount', 'tdsAmount'], textAmount(text, 'TDS Amount|TDS')),
-  netPayable: responseValue(response, ['net_payable_amount', 'netPayable'], textAmount(text, 'Net Payable Amount|Net Payable')),
+  tdsSection: responseValue(response, ['tds_section', 'tdsSection'], exactTextValue(text, 'TDS Section')),
+  tdsRate: responseValue(response, ['tds_rate', 'tdsRate'], exactTextValue(text, 'TDS Rate')),
+  tdsAmount: responseValue(response, ['tds_amount', 'tdsAmount'], textAmount(text, 'TDS Amount')),
+  netPayable: responseValue(response, ['net_payable_amount', 'netPayable'], textAmount(text, 'Net Payable(?: Amount)?')),
   bankReference: responseValue(response, ['bank_reference', 'bankReference', 'reference'], textValue(text, 'Bank Reference|Reference') !== 'Missing' ? textValue(text, 'Bank Reference|Reference') : firstLedgerRow.folio),
   paymentDate: responseValue(response, ['payment_date', 'paymentDate'], textValue(text, 'Payment Date') !== 'Missing' ? textValue(text, 'Payment Date') : firstLedgerRow.date),
   debitAccount: responseValue(response, ['debit_account', 'debitAccount'], textValue(text, 'Debit Account') !== 'Missing' ? textValue(text, 'Debit Account') : firstDebit > 0 ? 'Bank Account' : 'Missing'),
