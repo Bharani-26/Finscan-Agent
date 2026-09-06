@@ -53,7 +53,7 @@ const getResponseText = (response) => {
 
 const getTextField = (text, labels) => {
   const match = String(text).match(new RegExp(`(?:${labels.join('|')})\\s*:?\\s*([^\\n|]+)`, 'i'));
-  return match ? match[1].trim().replace(/^\*+|\*+$/g, '') : 'Not available';
+  return match && typeof match[1] === 'string' ? match[1].trim().replace(/^\*+|\*+$/g, '') : 'Not available';
 };
 
 const getTextAmount = (text, labels) => {
@@ -244,7 +244,7 @@ const UploadModal = ({ onClose, onUploadSuccess, userId: authenticatedUserId }) 
       ? 'Choose at least one PDF file to continue.'
       : selectedFiles.map(validateFile).find(Boolean);
 
-    if (!userId.trim()) {
+    if (typeof userId !== 'string' || !userId.trim()) {
       setError('Enter a user ID before uploading.');
       return;
     }

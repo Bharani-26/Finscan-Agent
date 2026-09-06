@@ -113,7 +113,7 @@ const normalizeBatchResult = (response, file) => {
 
 const textValue = (text, label) => {
   const match = String(text || '').match(new RegExp(`${label}\\s*:?\\s*([^\\n|]+)`, 'i'));
-  return match ? match[1].trim().replace(/^\*+|\*+$/g, '') : 'Missing';
+  return match && typeof match[1] === 'string' ? match[1].trim().replace(/^\*+|\*+$/g, '') : 'Missing';
 };
 
 const Upload = () => {
