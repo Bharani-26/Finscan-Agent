@@ -11,7 +11,7 @@ import {
   Tags,
   Upload,
 } from 'lucide-react';
-import { fetchUserBankStatements, fetchUserInvoices } from '../services/api';
+import { fetchUserBankStatements, fetchUserInvoices, fetchUserLedgerEntries } from '../services/api';
 
 const getValue = (record, keys, fallback = '') => {
   for (const key of keys) {
@@ -56,6 +56,18 @@ const statementData = (statement) => ({
   type: String(getValue(statement, ['type', 'transaction_type', 'direction'], 'debit')).toLowerCase(),
 });
 
+const ledgerEntryData = (entry) => ({
+  date: getValue(entry, ['entry_date', 'date', 'created_at']),
+  particulars: getValue(entry, ['particulars', 'details', 'account'], 'Missing'),
+  debit: getValue(entry, ['debit'], null),
+  credit: getValue(entry, ['credit'], null),
+  folio: getValue(entry, ['folio_reference', 'folio', 'reference'], 'Missing'),
+  narrative: getValue(entry, ['narrative', 'description'], 'Missing'),
+  balance: getValue(entry, ['running_balance', 'runningBalance', 'balance'], null),
+});
+
+const ledgerMoney = (value) => value === null || value === undefined || value === '' ? 'Missing' : money(value);
+
 const Metric = ({ label, value, detail, icon: Icon, tone }) => (
   <article className="group relative overflow-hidden rounded-2xl border border-slate-800/90 bg-slate-900/80 p-5 shadow-xl shadow-slate-950/20 transition hover:-translate-y-0.5 hover:border-slate-700">
     <div className={`absolute -right-8 -top-8 h-24 w-24 rounded-full blur-3xl ${tone}`} />
@@ -79,10 +91,11 @@ const Tab = ({ active, icon: Icon, children, onClick }) => (
   </button>
 );
 
-export default function TaxDashboard({ onOpenUpload }) {
+export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
   const [activeTab, setActiveTab] = useState('ledger');
   const [invoices, setInvoices] = useState([]);
   const [bankStatements, setBankStatements] = useState([]);
+  const [ledgerEntries, setLedgerEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -90,12 +103,14 @@ export default function TaxDashboard({ onOpenUpload }) {
     setLoading(true);
     setError('');
     try {
-      const [invoiceRows, bankRows] = await Promise.all([
-        fetchUserInvoices('usr_101'),
-        fetchUserBankStatements('usr_101'),
+      const [invoiceRows, bankRows, ledgerRows] = await Promise.all([
+        fetchUserInvoices(userId),
+        fetchUserBankStatements(userId),
+        fetchUserLedgerEntries(userId),
       ]);
       setInvoices(Array.isArray(invoiceRows) ? invoiceRows : []);
       setBankStatements(Array.isArray(bankRows) ? bankRows : []);
+      setLedgerEntries(Array.isArray(ledgerRows) ? ledgerRows : []);
     } catch (loadError) {
       setError(loadError?.message || 'Could not load your accounting records.');
     } finally {
@@ -107,12 +122,13 @@ export default function TaxDashboard({ onOpenUpload }) {
 
   const normalizedInvoices = useMemo(() => invoices.map(invoiceData), [invoices]);
   const normalizedStatements = useMemo(() => bankStatements.map(statementData), [bankStatements]);
+  const normalizedLedgerEntries = useMemo(() => ledgerEntries.map(ledgerEntryData), [ledgerEntries]);
   const totals = normalizedInvoices.reduce((result, invoice) => ({
     taxable: result.taxable + invoice.taxable,
     gst: result.gst + invoice.gst,
     tds: result.tds + invoice.tds,
   }), { taxable: 0, gst: 0, tds: 0 });
-  const hasRecords = invoices.length > 0 || bankStatements.length > 0;
+  const hasRecords = invoices.length > 0 || bankStatements.length > 0 || ledgerEntries.length > 0;
 
   return (
     <main className="min-h-full overflow-hidden rounded-[28px] border border-slate-800/80 bg-[radial-gradient(circle_at_top_right,rgba(79,70,229,0.12),transparent_32%),#070b14] p-5 text-slate-100 shadow-2xl shadow-slate-950/30 sm:p-8">
@@ -156,7 +172,7 @@ export default function TaxDashboard({ onOpenUpload }) {
       ) : !hasRecords ? (
         <EmptyState onOpenUpload={onOpenUpload} />
       ) : activeTab === 'ledger' ? (
-        <LedgerTable invoices={normalizedInvoices} />
+        <LedgerTable entries={normalizedLedgerEntries} />
       ) : activeTab === 'tax' ? (
         <TaxTable invoices={normalizedInvoices} totals={totals} />
       ) : (
@@ -185,7 +201,7 @@ const TableShell = ({ title, subtitle, count, children }) => (
   </section>
 );
 
-const LedgerTable = ({ invoices }) => <TableShell title="Ledger journal entries" subtitle="Processed invoices ready for accounting review" count={invoices.length}><table className="w-full min-w-[900px] text-left text-sm"><thead className="bg-slate-950/60 text-[11px] uppercase tracking-wider text-slate-500"><tr>{['Date', 'Invoice', 'Vendor', 'GL category', 'Taxable', 'GST', 'TDS', 'Net payable'].map((label) => <th key={label} className="px-5 py-3 font-semibold">{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-800/80">{invoices.map((invoice, index) => <tr key={invoice.number + index} className="transition hover:bg-white/[0.025]"><td className="whitespace-nowrap px-5 py-4 text-slate-500">{dateLabel(invoice.date)}</td><td className="whitespace-nowrap px-5 py-4 font-mono font-semibold text-indigo-300">{invoice.number}</td><td className="whitespace-nowrap px-5 py-4 font-medium text-slate-200">{invoice.vendor}</td><td className="px-5 py-4"><span className="rounded-lg border border-amber-400/20 bg-amber-400/10 px-2.5 py-1 text-xs text-amber-300">{invoice.category}</span></td><td className="whitespace-nowrap px-5 py-4 font-mono text-slate-300">{money(invoice.taxable)}</td><td className="whitespace-nowrap px-5 py-4 font-mono text-emerald-300">{money(invoice.gst)}</td><td className="whitespace-nowrap px-5 py-4 font-mono text-amber-300">{money(invoice.tds)}</td><td className="whitespace-nowrap px-5 py-4 font-mono font-semibold text-white">{money(invoice.total || invoice.taxable + invoice.gst)}</td></tr>)}</tbody></table></TableShell>;
+const LedgerTable = ({ entries }) => <TableShell title="Ledger journal entries" subtitle="Persisted double-entry records ready for accounting review" count={entries.length}>{entries.length === 0 ? <div className="p-12 text-center text-sm text-slate-500">No ledger entries found. Upload a processed document to create one.</div> : <table className="w-full min-w-[1100px] text-left text-sm"><thead className="bg-slate-950/60 text-[11px] uppercase tracking-wider text-slate-500"><tr>{['Date', 'Particulars / Details', 'Debit', 'Credit', 'Folio / Reference', 'Description / Narrative', 'Running Balance'].map((label) => <th key={label} className="px-5 py-3 font-semibold">{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-800/80">{entries.map((entry, index) => <tr key={`${entry.particulars}-${index}`} className="transition hover:bg-white/[0.025]"><td className="whitespace-nowrap px-5 py-4 text-slate-500">{dateLabel(entry.date)}</td><td className="px-5 py-4 font-medium text-slate-200">{entry.particulars}</td><td className="whitespace-nowrap px-5 py-4 font-mono text-cyan-300">{ledgerMoney(entry.debit)}</td><td className="whitespace-nowrap px-5 py-4 font-mono text-amber-300">{ledgerMoney(entry.credit)}</td><td className="whitespace-nowrap px-5 py-4 text-slate-400">{entry.folio}</td><td className="min-w-56 px-5 py-4 text-slate-300">{entry.narrative}</td><td className="whitespace-nowrap px-5 py-4 font-mono font-semibold text-white">{ledgerMoney(entry.balance)}</td></tr>)}</tbody></table>}</TableShell>;
 
 const TaxTable = ({ invoices, totals }) => <TableShell title="Tax position" subtitle={`GST ${money(totals.gst)} / TDS ${money(totals.tds)} across processed invoices`} count={invoices.length}><table className="w-full min-w-[700px] text-left text-sm"><thead className="bg-slate-950/60 text-[11px] uppercase tracking-wider text-slate-500"><tr>{['Document', 'Taxable value', 'GST claimable', 'TDS deducted', 'Net liability'].map((label) => <th key={label} className="px-5 py-3 font-semibold">{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-800/80">{invoices.map((invoice, index) => <tr key={invoice.number + index} className="hover:bg-white/[0.025]"><td className="px-5 py-4"><p className="font-mono font-semibold text-indigo-300">{invoice.number}</p><p className="mt-1 text-xs text-slate-500">{invoice.vendor}</p></td><td className="px-5 py-4 font-mono text-slate-300">{money(invoice.taxable)}</td><td className="px-5 py-4 font-mono text-emerald-300">{money(invoice.gst)}</td><td className="px-5 py-4 font-mono text-amber-300">{money(invoice.tds)}</td><td className="px-5 py-4 font-mono font-semibold text-white">{money(invoice.gst - invoice.tds)}</td></tr>)}</tbody></table></TableShell>;
 

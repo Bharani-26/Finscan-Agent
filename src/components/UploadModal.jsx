@@ -10,7 +10,7 @@ import {
   UploadCloud,
   X,
 } from 'lucide-react';
-import { uploadAndProcessDocument } from '../services/api';
+import { insertLedgerEntries, uploadAndProcessDocument } from '../services/api';
 
 const ACCEPTED_FILE_TYPES = 'application/pdf,image/jpeg,image/png,image/webp';
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -58,6 +58,13 @@ const getLedgerRows = (response) => {
   return ledger?.ledger_entry || ledger?.ledgerEntry || ledger?.ledger || [];
 };
 
+const getLedgerValue = (row, keys, fallback = 'Missing') => {
+  for (const key of keys) {
+    if (row?.[key] !== undefined && row[key] !== null && row[key] !== '') return row[key];
+  }
+  return fallback;
+};
+
 const getComplianceFlags = (response) => {
   const unwrappedResponse = Array.isArray(response) ? response[0] : response;
   const flags = getResponseValue(unwrappedResponse, ['compliance_flags', 'complianceFlags'], {});
@@ -101,9 +108,9 @@ const formatAmount = (value) => {
   return value;
 };
 
-const UploadModal = ({ onClose, onUploadSuccess }) => {
+const UploadModal = ({ onClose, onUploadSuccess, userId: authenticatedUserId }) => {
   const fileInputRef = useRef(null);
-  const [userId, setUserId] = useState('usr_101');
+  const [userId, setUserId] = useState(authenticatedUserId || 'usr_101');
   const [documentType, setDocumentType] = useState('invoice');
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
@@ -179,7 +186,15 @@ const UploadModal = ({ onClose, onUploadSuccess }) => {
 
     try {
       const response = await uploadAndProcessDocument(selectedFile, userId.trim(), documentType);
-      setSummary(getSummary(response));
+      const responseSummary = getSummary(response);
+      await insertLedgerEntries(responseSummary.ledgerRows, {
+        userId: userId.trim(),
+        documentType: responseSummary.documentType,
+        date: responseSummary.date,
+        invoiceNumber: responseSummary.invoiceNumber,
+        vendor: responseSummary.vendor,
+      });
+      setSummary(responseSummary);
       setActiveStage(PROCESSING_STAGES.length - 1);
       onUploadSuccess?.(response);
     } catch (uploadError) {
@@ -376,14 +391,26 @@ const UploadModal = ({ onClose, onUploadSuccess }) => {
                   </div>
                   <table className="w-full min-w-[520px] text-left text-sm">
                     <thead className="bg-slate-900 text-xs uppercase tracking-wider text-slate-500">
-                      <tr><th className="px-4 py-3">Account</th><th className="px-4 py-3 text-right">Debit</th><th className="px-4 py-3 text-right">Credit</th></tr>
+                      <tr>
+                        <th className="px-4 py-3">Date</th>
+                        <th className="px-4 py-3">Particulars / Details</th>
+                        <th className="px-4 py-3 text-right">Debit</th>
+                        <th className="px-4 py-3 text-right">Credit</th>
+                        <th className="px-4 py-3">Folio / Reference</th>
+                        <th className="px-4 py-3">Description / Narrative</th>
+                        <th className="px-4 py-3 text-right">Running Balance</th>
+                      </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800">
                       {summary.ledgerRows.map((row, index) => (
-                        <tr key={`${row.account || row.Account || 'account'}-${index}`}>
-                          <td className="px-4 py-3 text-slate-200">{row.account || row.Account || 'Missing'}</td>
+                        <tr key={`${getLedgerValue(row, ['account', 'Account'])}-${index}`}>
+                          <td className="whitespace-nowrap px-4 py-3 text-slate-400">{getLedgerValue(row, ['date', 'Date'], summary.date)}</td>
+                          <td className="px-4 py-3 text-slate-200">{getLedgerValue(row, ['particulars', 'Particulars', 'details', 'Details', 'account', 'Account'])}</td>
                           <td className="px-4 py-3 text-right font-mono text-cyan-300">{formatAmount(row.debit ?? row.Debit ?? 'Missing')}</td>
                           <td className="px-4 py-3 text-right font-mono text-amber-300">{formatAmount(row.credit ?? row.Credit ?? 'Missing')}</td>
+                          <td className="whitespace-nowrap px-4 py-3 text-slate-400">{getLedgerValue(row, ['folio', 'Folio', 'reference', 'Reference', 'ref', 'Ref'])}</td>
+                          <td className="min-w-48 px-4 py-3 text-slate-300">{getLedgerValue(row, ['description', 'Description', 'narrative', 'Narrative'])}</td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right font-mono text-slate-200">{formatAmount(getLedgerValue(row, ['running_balance', 'runningBalance', 'balance', 'Balance']))}</td>
                         </tr>
                       ))}
                     </tbody>

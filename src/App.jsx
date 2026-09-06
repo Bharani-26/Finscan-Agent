@@ -72,7 +72,7 @@ const MainApp = () => {
         <Navbar />
 
         <main className="content-area">
-          {activePage === 'dashboard' && <TaxDashboard key={dashboardRefreshKey} onOpenUpload={() => setIsUploadModalOpen(true)} />}
+          {activePage === 'dashboard' && <TaxDashboard key={dashboardRefreshKey} userId={user.id} onOpenUpload={() => setIsUploadModalOpen(true)} />}
           {activePage === 'upload' && <Upload />}
           {activePage === 'compliance' && <Compliance />}
           {activePage === 'profile' && <Profile />}
@@ -83,6 +83,7 @@ const MainApp = () => {
         <UploadModal
           onClose={() => setIsUploadModalOpen(false)}
           onUploadSuccess={handleUploadSuccess}
+          userId={user.id}
         />
       )}
 
