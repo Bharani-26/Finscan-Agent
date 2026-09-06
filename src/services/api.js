@@ -43,7 +43,7 @@ export async function uploadAndProcessDocument(file, userId = 'usr_101', documen
   try {
     return JSON.parse(responseText);
   } catch {
-    throw new Error('The document processor returned invalid JSON. Check the n8n webhook response.');
+    return { rawText: responseText };
   }
 }
 

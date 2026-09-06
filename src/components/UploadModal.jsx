@@ -47,6 +47,7 @@ const getResponseValue = (response, keys, fallback = 'Not available') => {
 
 const getLedgerRows = (response) => {
   const unwrappedResponse = Array.isArray(response) ? response[0] : response;
+  if (unwrappedResponse?.rawText) return parseLedgerText(unwrappedResponse.rawText);
   const sources = [
     unwrappedResponse,
     unwrappedResponse?.data,
@@ -56,6 +57,32 @@ const getLedgerRows = (response) => {
   ];
   const ledger = sources.find((source) => Array.isArray(source?.ledger_entry) || Array.isArray(source?.ledgerEntry) || Array.isArray(source?.ledger));
   return ledger?.ledger_entry || ledger?.ledgerEntry || ledger?.ledger || [];
+};
+
+const parseLedgerText = (text) => {
+  const lines = String(text).split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const tableLines = lines.filter((line) => line.includes('|'));
+  if (tableLines.length < 2) return [];
+
+  const splitRow = (line) => line.replace(/^\|\s*|\s*\|$/g, '').split('|').map((cell) => cell.trim());
+  const headers = splitRow(tableLines[0]).map((header) => header.toLowerCase().replace(/[^a-z]+/g, ''));
+  const separator = /^:?-{3,}:?$/;
+  const rows = tableLines.slice(1).filter((line) => !splitRow(line).every((cell) => separator.test(cell)));
+
+  return rows.map((line) => {
+    const cells = splitRow(line);
+    return headers.reduce((entry, header, index) => {
+      const value = cells[index] || 'Missing';
+      if (header.includes('date')) entry.date = value;
+      else if (header.includes('particular') || header.includes('detail') || header.includes('account')) entry.particulars = value;
+      else if (header.includes('debit')) entry.debit = value;
+      else if (header.includes('credit')) entry.credit = value;
+      else if (header.includes('folio') || header.includes('reference')) entry.folio = value;
+      else if (header.includes('description') || header.includes('narrative')) entry.description = value;
+      else if (header.includes('balance')) entry.running_balance = value;
+      return entry;
+    }, {});
+  });
 };
 
 const getLedgerValue = (row, keys, fallback = 'Missing') => {
@@ -72,6 +99,7 @@ const getComplianceFlags = (response) => {
 };
 
 const getSummary = (response) => ({
+  rawText: response?.rawText || '',
   documentType: getResponseValue(response, ['document_type', 'documentType', 'type']),
   ledgerCategory: getResponseValue(response, [
     'gl_ledger_category',
@@ -382,6 +410,16 @@ const UploadModal = ({ onClose, onUploadSuccess, userId: authenticatedUserId }) 
                   </div>
                 ))}
               </div>
+
+              {summary.rawText && (
+                <div className="mt-5 overflow-x-auto rounded-xl border border-slate-700 bg-slate-950/50">
+                  <div className="border-b border-slate-700 px-4 py-3">
+                    <h4 className="text-sm font-semibold text-slate-100">Processor output</h4>
+                    <p className="mt-1 text-xs text-slate-500">Text table returned by n8n</p>
+                  </div>
+                  <pre className="min-w-max whitespace-pre-wrap p-4 font-mono text-xs leading-6 text-slate-300">{summary.rawText}</pre>
+                </div>
+              )}
 
               {summary.ledgerRows.length > 0 && (
                 <div className="mt-5 overflow-x-auto rounded-xl border border-slate-700 bg-slate-950/50">
