@@ -648,7 +648,7 @@ const Upload = () => {
                 Indicative results only — consult a qualified professional before filing or making financial decisions
               </p>
 
-              {analysisResult.batchCount > 1 && (
+              {false && analysisResult.batchCount > 1 && (
                 <div style={{ marginBottom: '1.25rem', padding: '1rem', border: '1px solid var(--border-emerald)', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.08)' }}>
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Combined amount for {analysisResult.batchCount} documents</span>
                   <div className="mono font-bold" style={{ fontSize: '1.5rem', color: 'var(--emerald-400)', marginTop: '0.25rem' }}>
@@ -665,6 +665,7 @@ const Upload = () => {
                 </div>
               )}
 
+              {false && <>
               {/* Extracted Fields */}
               <div style={{
                 display: 'grid',
@@ -743,6 +744,7 @@ const Upload = () => {
                   {analysisResult.aiSummary}
                 </p>
               </div>
+              </>}
 
               {analysisResult.ledgerRows?.length > 0 && (
                 <div style={{ marginBottom: '1.5rem', overflowX: 'auto', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)' }}>
