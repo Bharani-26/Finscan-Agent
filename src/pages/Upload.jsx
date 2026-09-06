@@ -59,7 +59,6 @@ const Upload = () => {
 
   // File Picker State
   const [selectedFiles, setSelectedFiles] = useState([]);
-  const [uploadMode, setUploadMode] = useState('individual');
   const [documentType, setDocumentType] = useState('debit_invoice');
   const [validationError, setValidationError] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -87,8 +86,8 @@ const Upload = () => {
     setValidationError(null);
   };
 
-  const handleUploadModeChange = (mode) => {
-    setUploadMode(mode);
+  const handleDocumentTypeChange = (type) => {
+    setDocumentType(type);
     setSelectedFiles([]);
     setValidationError(null);
     resetAnalysisState();
@@ -121,7 +120,7 @@ const Upload = () => {
   // Handle File Selection
   const handleFileSelect = (files) => {
     resetAnalysisState();
-    const nextFiles = Array.from(files || []).slice(0, uploadMode === 'individual' ? 1 : undefined);
+    const nextFiles = Array.from(files || []).slice(0, 1);
 
     if (nextFiles.length === 0) {
       setSelectedFiles([]);
@@ -345,33 +344,22 @@ const Upload = () => {
                   1. Select Financial Document
                 </h3>
 
-                <select
-                  value={documentType}
-                  onChange={(event) => setDocumentType(event.target.value)}
-                  disabled={panelState === 'loading'}
-                  className="form-input"
-                  style={{ marginBottom: '1rem' }}
-                >
-                  <option value="debit_invoice">Debit Invoice</option>
-                  <option value="credit_invoice">Credit Invoice</option>
-                  <option value="bank_statement">Bank Statement</option>
-                </select>
-
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginBottom: '1rem' }}>
                   {[
-                    ['individual', 'Individual document'],
-                    ['multiple', 'Multiple documents'],
+                    ['debit_invoice', 'Upload Debit Invoice'],
+                    ['credit_invoice', 'Upload Credit Invoice'],
+                    ['bank_statement', 'Upload Bank Statement'],
                   ].map(([mode, label]) => (
                     <button
                       key={mode}
                       type="button"
-                      onClick={() => handleUploadModeChange(mode)}
+                      onClick={() => handleDocumentTypeChange(mode)}
                       className="btn btn-sm btn-secondary"
                       style={{
                         flex: 1,
-                        borderColor: uploadMode === mode ? 'var(--border-emerald)' : undefined,
-                        backgroundColor: uploadMode === mode ? 'rgba(16, 185, 129, 0.12)' : undefined,
-                        color: uploadMode === mode ? 'var(--emerald-400)' : undefined,
+                        borderColor: documentType === mode ? 'var(--border-emerald)' : undefined,
+                        backgroundColor: documentType === mode ? 'rgba(16, 185, 129, 0.12)' : undefined,
+                        color: documentType === mode ? 'var(--emerald-400)' : undefined,
                       }}
                     >
                       {label}
@@ -400,7 +388,6 @@ const Upload = () => {
                     ref={fileInputRef}
                     style={{ display: 'none' }}
                     accept=".pdf,application/pdf"
-                    multiple={uploadMode === 'multiple'}
                     onChange={(e) => {
                       if (e.target.files && e.target.files.length > 0) {
                         handleFileSelect(e.target.files);
@@ -435,7 +422,7 @@ const Upload = () => {
                         Drag & drop invoice here, or <span className="text-emerald">browse</span>
                       </p>
                       <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
-                        {uploadMode === 'individual' ? 'One PDF file (Max 10MB)' : 'Multiple PDF files (Max 10MB each)'}
+                        One PDF file (Max 10MB)
                       </p>
                     </div>
                   )}
