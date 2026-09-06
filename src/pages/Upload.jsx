@@ -21,7 +21,8 @@ import RiskBadge from '../components/RiskBadge';
 import ManualEntryForm from '../components/ManualEntryForm';
 
 const responseValue = (response, keys, fallback = 'Missing') => {
-  const sources = [response, response?.data, response?.result, response?.output, response?.json];
+  const unwrapped = Array.isArray(response) ? response[0] : response;
+  const sources = [unwrapped, unwrapped?.data, unwrapped?.result, unwrapped?.output, unwrapped?.json];
   for (const source of sources) {
     if (!source || typeof source !== 'object') continue;
     for (const key of keys) {
@@ -29,6 +30,13 @@ const responseValue = (response, keys, fallback = 'Missing') => {
     }
   }
   return fallback;
+};
+
+const responseText = (response) => {
+  const unwrapped = Array.isArray(response) ? response[0] : response;
+  if (typeof unwrapped === 'string') return unwrapped;
+  const value = responseValue(unwrapped, ['rawText', 'output', 'text', 'response', 'content'], '');
+  return typeof value === 'string' ? value : '';
 };
 
 const amountValue = (value) => {
@@ -41,15 +49,25 @@ const textAmount = (text, label) => {
   return match ? amountValue(match[1]) : 0;
 };
 
-const normalizeBatchResult = (response, file) => ({
-  ...response,
+const normalizeBatchResult = (response, file) => {
+  const text = responseText(response);
+  return ({
+  ...(Array.isArray(response) ? response[0] : response),
   fileName: file.name,
-  invoiceNumber: responseValue(response, ['invoice_number', 'invoiceNumber']),
-  vendorName: responseValue(response, ['vendor_customer', 'vendor', 'vendor_name', 'vendorName']),
-  subtotal: amountValue(responseValue(response, ['subtotal', 'taxable_amount', 'taxableAmount'], textAmount(response?.rawText, 'Taxable Value'))),
-  gstAmount: amountValue(responseValue(response, ['calculated_gst_amount', 'gst_amount', 'gstAmount'], textAmount(response?.rawText, 'GST'))),
-  totalAmount: amountValue(responseValue(response, ['total_amount', 'totalAmount', 'net_payable_amount', 'netPayable'], textAmount(response?.rawText, 'Invoice Amount|Total Amount|Net Payable Amount'))),
-});
+  rawText: text,
+  invoiceNumber: responseValue(response, ['invoice_number', 'invoiceNumber'], textValue(text, 'Invoice Number')),
+  vendorName: responseValue(response, ['vendor_customer', 'vendor', 'vendor_name', 'vendorName'], textValue(text, 'Vendor Name|Vendor|Customer')),
+  subtotal: amountValue(responseValue(response, ['subtotal', 'taxable_amount', 'taxableAmount'], textAmount(text, 'Taxable Value|Subtotal'))),
+  gstAmount: amountValue(responseValue(response, ['calculated_gst_amount', 'gst_amount', 'gstAmount'], textAmount(text, 'GST|GST Amount'))),
+  totalAmount: amountValue(responseValue(response, ['total_amount', 'totalAmount', 'net_payable_amount', 'netPayable'], textAmount(text, 'Invoice Amount|Total Amount|Net Payable Amount'))),
+  aiSummary: text || 'No analysis text returned by the processor.',
+  });
+};
+
+const textValue = (text, label) => {
+  const match = String(text || '').match(new RegExp(`${label}\\s*:?\\s*([^\\n|]+)`, 'i'));
+  return match ? match[1].trim().replace(/^\*+|\*+$/g, '') : 'Missing';
+};
 
 const Upload = () => {
   const { addInvoice, setActivePage } = useFinGuard();
