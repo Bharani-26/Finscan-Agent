@@ -26,7 +26,8 @@ const Upload = () => {
   const [activeTab, setActiveTab] = useState('upload');
 
   // File Picker State
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [documentType, setDocumentType] = useState('debit_invoice');
   const [validationError, setValidationError] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
   
@@ -49,7 +50,7 @@ const Upload = () => {
   const handleTabSwitch = (tab) => {
     setActiveTab(tab);
     resetAnalysisState();
-    setSelectedFile(null);
+    setSelectedFiles([]);
     setValidationError(null);
   };
 
@@ -59,13 +60,13 @@ const Upload = () => {
       return 'Please upload a valid invoice or bill before analyzing';
     }
 
-    const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    const validTypes = ['application/pdf'];
     const fileName = file.name || '';
     const fileType = file.type || '';
-    const hasValidExt = /\.(pdf|jpg|jpeg|png)$/i.test(fileName);
+    const hasValidExt = /\.pdf$/i.test(fileName);
 
     if (!validTypes.includes(fileType.toLowerCase()) && !hasValidExt) {
-      return 'Please upload a valid invoice or bill before analyzing';
+      return 'Only PDF files are supported.';
     }
 
     const MAX_SIZE = 10 * 1024 * 1024; // 10MB
@@ -77,21 +78,22 @@ const Upload = () => {
   };
 
   // Handle File Selection
-  const handleFileSelect = (file) => {
+  const handleFileSelect = (files) => {
     resetAnalysisState();
+    const nextFiles = Array.from(files || []);
 
-    if (!file) {
-      setSelectedFile(null);
+    if (nextFiles.length === 0) {
+      setSelectedFiles([]);
       setValidationError(null);
       return;
     }
 
-    const err = validateFile(file);
+    const err = nextFiles.map(validateFile).find(Boolean);
     if (err) {
-      setSelectedFile(null);
+      setSelectedFiles([]);
       setValidationError(err);
     } else {
-      setSelectedFile(file);
+      setSelectedFiles(nextFiles);
       setValidationError(null);
     }
   };
@@ -109,14 +111,14 @@ const Upload = () => {
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragOver(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileSelect(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileSelect(e.dataTransfer.files);
     }
   };
 
   // Clear Selected File
   const handleClearFile = () => {
-    setSelectedFile(null);
+    setSelectedFiles([]);
     setValidationError(null);
     resetAnalysisState();
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -124,12 +126,12 @@ const Upload = () => {
 
   // Handle Analyze Document Submission (File Flow)
   const handleAnalyzeClick = async () => {
-    if (!selectedFile) {
-      setValidationError('Please upload a valid invoice or bill before analyzing');
+    if (selectedFiles.length === 0) {
+      setValidationError('Choose at least one PDF file before analyzing.');
       return;
     }
 
-    const err = validateFile(selectedFile);
+    const err = selectedFiles.map(validateFile).find(Boolean);
     if (err) {
       setValidationError(err);
       return;
@@ -139,18 +141,20 @@ const Upload = () => {
     setStatusText('Extracting data...');
 
     try {
-      const response = await analyzeDocument(selectedFile, (progress) => {
-        setStatusText(progress);
-      });
+      const results = [];
+      for (const [index, file] of selectedFiles.entries()) {
+        setStatusText(`Analyzing document ${index + 1} of ${selectedFiles.length}...`);
+        const response = await analyzeDocument(file, (progress) => setStatusText(progress));
+        if (!response?.success || !response.data) {
+          throw new Error(response?.error || `Could not analyze ${file.name}.`);
+        }
+        results.push(response.data);
+      }
 
-      if (response && response.success && response.data) {
-        setAnalysisResult(response.data);
+      if (results.length > 0) {
+        setAnalysisResult({ ...results[0], batchCount: results.length, batchResults: results, documentType });
         setBackendError(null);
         setPanelState('success');
-      } else {
-        setAnalysisResult(null);
-        setBackendError(response?.error || 'No document detected — please upload a valid invoice or bill.');
-        setPanelState('failure');
       }
     } catch (error) {
       setAnalysisResult(null);
@@ -202,25 +206,25 @@ const Upload = () => {
         'Tax_Invoice_Apex_Cloud.pdf', 
         { type: 'application/pdf' }
       );
-      handleFileSelect(mockFile);
+      handleFileSelect([mockFile]);
     } else if (type === 'corrupt') {
       const mockFile = new File(
         ['corrupted header bytes'], 
         'corrupt_scan.pdf', 
         { type: 'application/pdf' }
       );
-      handleFileSelect(mockFile);
+      handleFileSelect([mockFile]);
     } else if (type === 'invalid_type') {
       const mockFile = new File(
         ['Plain text file'], 
         'notes.txt', 
         { type: 'text/plain' }
       );
-      handleFileSelect(mockFile);
+      handleFileSelect([mockFile]);
     }
   };
 
-  const isAnalyzeDisabled = !selectedFile || Boolean(validationError) || panelState === 'loading';
+  const isAnalyzeDisabled = selectedFiles.length === 0 || Boolean(validationError) || panelState === 'loading';
 
   return (
     <div>
@@ -303,6 +307,18 @@ const Upload = () => {
                   1. Select Financial Document
                 </h3>
 
+                <select
+                  value={documentType}
+                  onChange={(event) => setDocumentType(event.target.value)}
+                  disabled={panelState === 'loading'}
+                  className="form-input"
+                  style={{ marginBottom: '1rem' }}
+                >
+                  <option value="debit_invoice">Debit Invoice</option>
+                  <option value="credit_invoice">Credit Invoice</option>
+                  <option value="bank_statement">Bank Statement</option>
+                </select>
+
                 {/* Drag & Drop Area */}
                 <div
                   onDragOver={handleDragOver}
@@ -310,9 +326,9 @@ const Upload = () => {
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current && fileInputRef.current.click()}
                   style={{
-                    border: `2px dashed ${isDragOver ? 'var(--emerald-500)' : selectedFile ? 'var(--border-emerald)' : 'var(--border-medium)'}`,
+                    border: `2px dashed ${isDragOver ? 'var(--emerald-500)' : selectedFiles.length > 0 ? 'var(--border-emerald)' : 'var(--border-medium)'}`,
                     borderRadius: 'var(--radius-lg)',
-                    backgroundColor: isDragOver ? 'var(--emerald-glow)' : selectedFile ? 'rgba(16, 185, 129, 0.04)' : 'rgba(15, 23, 42, 0.5)',
+                    backgroundColor: isDragOver ? 'var(--emerald-glow)' : selectedFiles.length > 0 ? 'rgba(16, 185, 129, 0.04)' : 'rgba(15, 23, 42, 0.5)',
                     padding: '2.5rem 1.5rem',
                     textAlign: 'center',
                     cursor: 'pointer',
@@ -323,10 +339,11 @@ const Upload = () => {
                     type="file"
                     ref={fileInputRef}
                     style={{ display: 'none' }}
-                    accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                    accept=".pdf,application/pdf"
+                    multiple
                     onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        handleFileSelect(e.target.files[0]);
+                      if (e.target.files && e.target.files.length > 0) {
+                        handleFileSelect(e.target.files);
                       }
                     }}
                   />
@@ -335,23 +352,21 @@ const Upload = () => {
                     width: '52px',
                     height: '52px',
                     borderRadius: '50%',
-                    backgroundColor: selectedFile ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                    color: selectedFile ? 'var(--emerald-400)' : 'var(--text-muted)',
+                    backgroundColor: selectedFiles.length > 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                    color: selectedFiles.length > 0 ? 'var(--emerald-400)' : 'var(--text-muted)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     margin: '0 auto 1rem auto'
                   }}>
-                    {selectedFile ? <FileCheck size={28} /> : <UploadCloud size={28} />}
+                    {selectedFiles.length > 0 ? <FileCheck size={28} /> : <UploadCloud size={28} />}
                   </div>
 
-                  {selectedFile ? (
+                  {selectedFiles.length > 0 ? (
                     <div>
-                      <p style={{ fontWeight: 600, color: 'var(--emerald-400)', fontSize: '0.95rem', wordBreak: 'break-all' }}>
-                        {selectedFile.name}
-                      </p>
+                      {selectedFiles.map((file) => <p key={`${file.name}-${file.lastModified}`} style={{ fontWeight: 600, color: 'var(--emerald-400)', fontSize: '0.9rem', wordBreak: 'break-all' }}>{file.name}</p>)}
                       <p className="mono" style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                        {(selectedFile.size / 1024).toFixed(1)} KB • Ready to analyze
+                        {selectedFiles.length} PDF document{selectedFiles.length === 1 ? '' : 's'} ready to analyze
                       </p>
                     </div>
                   ) : (
@@ -360,7 +375,7 @@ const Upload = () => {
                         Drag & drop invoice here, or <span className="text-emerald">browse</span>
                       </p>
                       <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
-                        Supports PDF, JPG, or PNG (Max 10MB)
+                        Supports multiple PDF files (Max 10MB each)
                       </p>
                     </div>
                   )}
@@ -402,7 +417,7 @@ const Upload = () => {
                     <span>{panelState === 'loading' ? 'Analyzing...' : 'Analyze Document'}</span>
                   </button>
 
-                  {selectedFile && (
+                  {selectedFiles.length > 0 && (
                     <button
                       onClick={handleClearFile}
                       className="btn btn-secondary"
@@ -514,7 +529,7 @@ const Upload = () => {
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <ErrorMessage
                 message={backendError}
-                onRetry={selectedFile ? handleAnalyzeClick : null}
+                onRetry={selectedFiles.length > 0 ? handleAnalyzeClick : null}
               />
               <p style={{ fontSize: '0.78rem', color: 'var(--text-dim)', textAlign: 'center', marginTop: '1rem' }}>
                 Strict No-Fake-Data Guard: No placeholder data rendered on failed analysis.
