@@ -204,7 +204,7 @@ const Upload = () => {
   // Handle File Selection
   const handleFileSelect = (files) => {
     resetAnalysisState();
-    const nextFiles = Array.from(files || []).slice(0, 1);
+    const nextFiles = Array.from(files || []);
 
     if (nextFiles.length === 0) {
       setSelectedFiles([]);
@@ -536,7 +536,7 @@ const Upload = () => {
                         Drag & drop invoice here, or <span className="text-emerald">browse</span>
                       </p>
                       <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
-                        One PDF file (Max 10MB)
+                        Select three PDFs together (Max 10MB each)
                       </p>
                     </div>
                   )}
