@@ -28,7 +28,8 @@ const EmptyState = ({
         alignItems: 'center',
         justifyContent: 'center',
         color: 'var(--emerald-400)',
-        marginBottom: '1.25rem'
+        marginBottom: '1.25rem',
+        boxShadow: '0 0 20px rgba(16, 185, 129, 0.15)'
       }}>
         <Icon size={32} />
       </div>

@@ -26,7 +26,6 @@ const ManualEntryForm = ({ onSubmit, loading }) => {
   const [validationError, setValidationError] = useState('');
   const [autoCalculateGst, setAutoCalculateGst] = useState(true);
 
-  // Auto calculate GST and Total when Subtotal changes
   const handleSubtotalChange = (val) => {
     setFormData(prev => {
       const sub = parseFloat(val) || 0;
@@ -58,7 +57,6 @@ const ManualEntryForm = ({ onSubmit, loading }) => {
     });
   };
 
-  // Form Validation Logic
   const checkValidity = () => {
     if (!formData.invoiceNumber.trim()) return 'Invoice Number is required.';
     if (!formData.vendorName.trim()) return 'Vendor Name is required.';
@@ -73,7 +71,7 @@ const ManualEntryForm = ({ onSubmit, loading }) => {
     const tot = parseFloat(formData.totalAmount);
     if (isNaN(tot) || tot <= 0) return 'Total Amount must be a positive number greater than 0.';
 
-    return null; // Valid
+    return null;
   };
 
   const currentError = checkValidity();
@@ -90,24 +88,36 @@ const ManualEntryForm = ({ onSubmit, loading }) => {
   };
 
   return (
-    <div className="card" style={{ padding: '1.5rem' }}>
-      <h3 style={{ fontSize: '1.05rem', marginBottom: '1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <FileSpreadsheet size={18} className="text-emerald" />
-        Manual Financial Entry Form
-      </h3>
+    <div className="card" style={{ padding: '1.75rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
+        <div className="flex items-center justify-center" style={{ 
+          width: '38px', 
+          height: '38px', 
+          borderRadius: '10px',
+          background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(6, 78, 59, 0.2) 100%)',
+          border: '1px solid rgba(16, 185, 129, 0.25)',
+          color: '#34D399'
+        }}>
+          <FileSpreadsheet size={18} />
+        </div>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)', letterSpacing: '-0.01em' }}>
+          Manual Financial Entry Form
+        </h3>
+      </div>
 
       {validationError && (
         <div style={{
-          backgroundColor: 'rgba(239, 68, 68, 0.12)',
+          background: 'rgba(239, 68, 68, 0.12)',
           border: '1px solid rgba(239, 68, 68, 0.3)',
           color: '#FCA5A5',
-          padding: '0.75rem 1rem',
+          padding: '0.85rem 1rem',
           borderRadius: 'var(--radius-md)',
           fontSize: '0.84rem',
           marginBottom: '1.25rem',
           display: 'flex',
           alignItems: 'center',
-          gap: '0.5rem'
+          gap: '0.5rem',
+          backdropFilter: 'blur(8px)'
         }}>
           <AlertCircle size={16} style={{ flexShrink: 0 }} />
           <span>{validationError}</span>
@@ -115,18 +125,17 @@ const ManualEntryForm = ({ onSubmit, loading }) => {
       )}
 
       <form onSubmit={handleSubmit}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
           
-          {/* Row 1: Invoice Number & Vendor */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">Invoice Number *</label>
               <div style={{ position: 'relative' }}>
-                <FileText size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <FileText size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
                 <input
                   type="text"
                   className="form-input mono"
-                  style={{ paddingLeft: '2.2rem', padding: '0.55rem 0.75rem 0.55rem 2.2rem', fontSize: '0.88rem' }}
+                  style={{ paddingLeft: '2.3rem', padding: '0.65rem 0.9rem 0.65rem 2.3rem', fontSize: '0.88rem' }}
                   placeholder="e.g. INV-2026-9041"
                   value={formData.invoiceNumber}
                   onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
@@ -137,11 +146,11 @@ const ManualEntryForm = ({ onSubmit, loading }) => {
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">Vendor Name *</label>
               <div style={{ position: 'relative' }}>
-                <Building2 size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <Building2 size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
                 <input
                   type="text"
                   className="form-input"
-                  style={{ paddingLeft: '2.2rem', padding: '0.55rem 0.75rem 0.55rem 2.2rem', fontSize: '0.88rem' }}
+                  style={{ paddingLeft: '2.3rem', padding: '0.65rem 0.9rem 0.65rem 2.3rem', fontSize: '0.88rem' }}
                   placeholder="e.g. Apex Cloud Systems"
                   value={formData.vendorName}
                   onChange={(e) => setFormData({ ...formData, vendorName: e.target.value })}
@@ -150,16 +159,15 @@ const ManualEntryForm = ({ onSubmit, loading }) => {
             </div>
           </div>
 
-          {/* Row 2: Date & Category */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">Invoice Date *</label>
               <div style={{ position: 'relative' }}>
-                <Calendar size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <Calendar size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
                 <input
                   type="date"
                   className="form-input"
-                  style={{ paddingLeft: '2.2rem', padding: '0.55rem 0.75rem 0.55rem 2.2rem', fontSize: '0.88rem' }}
+                  style={{ paddingLeft: '2.3rem', padding: '0.65rem 0.9rem 0.65rem 2.3rem', fontSize: '0.88rem' }}
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                 />
@@ -169,10 +177,10 @@ const ManualEntryForm = ({ onSubmit, loading }) => {
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">Category</label>
               <div style={{ position: 'relative' }}>
-                <Tag size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <Tag size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
                 <select
                   className="form-input"
-                  style={{ paddingLeft: '2.2rem', padding: '0.55rem 0.75rem 0.55rem 2.2rem', fontSize: '0.88rem' }}
+                  style={{ paddingLeft: '2.3rem', padding: '0.65rem 0.9rem 0.65rem 2.3rem', fontSize: '0.88rem' }}
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 >
@@ -188,17 +196,24 @@ const ManualEntryForm = ({ onSubmit, loading }) => {
             </div>
           </div>
 
-          {/* Row 3: Subtotal, GST, Total */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.1fr', gap: '0.75rem' }}>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: '1fr 1fr 1.1fr', 
+            gap: '0.75rem',
+            padding: '0.75rem',
+            borderRadius: 'var(--radius-md)',
+            background: 'rgba(15, 23, 42, 0.4)',
+            border: '1px solid var(--border-subtle)'
+          }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">Subtotal (₹) *</label>
               <div style={{ position: 'relative' }}>
-                <DollarSign size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <DollarSign size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
                 <input
                   type="number"
                   step="0.01"
                   className="form-input mono"
-                  style={{ paddingLeft: '2rem', padding: '0.55rem 0.75rem 0.55rem 2rem', fontSize: '0.88rem' }}
+                  style={{ paddingLeft: '2.1rem', padding: '0.6rem 0.8rem 0.6rem 2.1rem', fontSize: '0.88rem' }}
                   placeholder="0.00"
                   value={formData.subtotal}
                   onChange={(e) => handleSubtotalChange(e.target.value)}
@@ -209,12 +224,12 @@ const ManualEntryForm = ({ onSubmit, loading }) => {
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">GST / Tax (₹) *</label>
               <div style={{ position: 'relative' }}>
-                <Calculator size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <Calculator size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
                 <input
                   type="number"
                   step="0.01"
                   className="form-input mono"
-                  style={{ paddingLeft: '2rem', padding: '0.55rem 0.75rem 0.55rem 2rem', fontSize: '0.88rem' }}
+                  style={{ paddingLeft: '2.1rem', padding: '0.6rem 0.8rem 0.6rem 2.1rem', fontSize: '0.88rem' }}
                   placeholder="0.00"
                   value={formData.gstAmount}
                   onChange={(e) => handleGstChange(e.target.value)}
@@ -225,12 +240,12 @@ const ManualEntryForm = ({ onSubmit, loading }) => {
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label" style={{ color: 'var(--emerald-400)' }}>Total Amount (₹) *</label>
               <div style={{ position: 'relative' }}>
-                <DollarSign size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--emerald-400)' }} />
+                <DollarSign size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--emerald-400)', pointerEvents: 'none' }} />
                 <input
                   type="number"
                   step="0.01"
-                  className="form-input mono font-bold"
-                  style={{ paddingLeft: '2rem', padding: '0.55rem 0.75rem 0.55rem 2rem', fontSize: '0.88rem', borderColor: 'var(--border-emerald)', color: 'var(--emerald-400)' }}
+                  className="form-input mono"
+                  style={{ paddingLeft: '2.1rem', padding: '0.6rem 0.8rem 0.6rem 2.1rem', fontSize: '0.88rem', borderColor: 'var(--border-emerald)', color: 'var(--emerald-400)', background: 'rgba(16, 185, 129, 0.05)' }}
                   placeholder="0.00"
                   value={formData.totalAmount}
                   onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
@@ -239,35 +254,32 @@ const ManualEntryForm = ({ onSubmit, loading }) => {
             </div>
           </div>
 
-          {/* Row 4: Optional Notes */}
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Audit Notes (Optional)</label>
             <input
               type="text"
               className="form-input"
-              style={{ padding: '0.55rem 0.75rem', fontSize: '0.85rem' }}
+              style={{ padding: '0.65rem 0.9rem', fontSize: '0.85rem' }}
               placeholder="e.g. Approved under IT infrastructure Q3 budget"
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
             />
           </div>
 
-          {/* Submit Action */}
           <button
             type="submit"
             disabled={!isValid || loading}
             className="btn btn-primary"
             style={{
               marginTop: '0.5rem',
-              padding: '0.8rem',
-              opacity: !isValid || loading ? 0.45 : 1,
+              padding: '0.85rem',
+              opacity: !isValid || loading ? 0.5 : 1,
               cursor: !isValid || loading ? 'not-allowed' : 'pointer'
             }}
           >
             <Sparkles size={18} />
             <span>{loading ? 'Running Compliance Rules...' : 'Submit for Analysis'}</span>
           </button>
-
         </div>
       </form>
     </div>

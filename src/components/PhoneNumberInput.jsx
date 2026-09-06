@@ -12,7 +12,6 @@ const PhoneNumberInput = ({
 }) => {
   const [touched, setTouched] = useState(false);
 
-  // Check if number is valid (optional field: empty is allowed, non-empty must be valid)
   const isValid = !value || (typeof value === 'string' && isValidPhoneNumber(value));
 
   useEffect(() => {
@@ -45,17 +44,9 @@ const PhoneNumberInput = ({
         />
       </div>
 
-      {/* Inline Validation Error */}
       {touched && value && !isValid && (
-        <div style={{
-          marginTop: '0.4rem',
-          fontSize: '0.8rem',
-          color: '#FCA5A5',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.35rem'
-        }}>
-          <AlertCircle size={14} style={{ flexShrink: 0 }} />
+        <div className="flex items-center gap-2 text-red-400" style={{ marginTop: '0.5rem', fontSize: '0.8rem' }}>
+          <AlertCircle size={14} />
           <span>Please enter a valid phone number for the selected country</span>
         </div>
       )}

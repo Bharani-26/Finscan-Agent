@@ -14,10 +14,10 @@ const AlertDetailModal = ({ alert, onClose, onMarkReviewed }) => {
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <div style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '10px',
-              backgroundColor: 'rgba(245, 158, 11, 0.15)',
+              width: '44px',
+              height: '44px',
+              borderRadius: '12px',
+              backgroundColor: 'rgba(245, 158, 11, 0.12)',
               border: '1px solid rgba(245, 158, 11, 0.3)',
               display: 'flex',
               alignItems: 'center',
@@ -65,7 +65,7 @@ const AlertDetailModal = ({ alert, onClose, onMarkReviewed }) => {
         {/* Reference Invoice */}
         {alert.invoiceRef && (
           <div style={{
-            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            background: 'rgba(15, 23, 42, 0.6)',
             border: '1px solid var(--border-subtle)',
             borderRadius: 'var(--radius-md)',
             padding: '0.75rem 1rem',

@@ -287,13 +287,13 @@ const UploadModal = ({ onClose, onUploadSuccess, userId: authenticatedUserId }) 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md"
       role="dialog"
       aria-modal="true"
       aria-labelledby="upload-modal-title"
       onMouseDown={(event) => event.target === event.currentTarget && !isProcessing && onClose?.()}
     >
-      <div className="max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 text-slate-100 shadow-2xl shadow-emerald-950/30 sm:p-8">
+      <div className="max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-700/60 bg-slate-900/90 p-6 text-slate-100 shadow-2xl shadow-emerald-950/40 backdrop-blur-xl sm:p-8">
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <div className="mb-2 flex items-center gap-2 text-emerald-400">
