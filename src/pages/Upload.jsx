@@ -20,6 +20,37 @@ import ErrorMessage from '../components/ErrorMessage';
 import RiskBadge from '../components/RiskBadge';
 import ManualEntryForm from '../components/ManualEntryForm';
 
+const responseValue = (response, keys, fallback = 'Missing') => {
+  const sources = [response, response?.data, response?.result, response?.output, response?.json];
+  for (const source of sources) {
+    if (!source || typeof source !== 'object') continue;
+    for (const key of keys) {
+      if (source[key] !== undefined && source[key] !== null && source[key] !== '') return source[key];
+    }
+  }
+  return fallback;
+};
+
+const amountValue = (value) => {
+  const amount = Number(String(value).replace(/[^\d.-]/g, ''));
+  return Number.isFinite(amount) ? amount : 0;
+};
+
+const textAmount = (text, label) => {
+  const match = String(text || '').match(new RegExp(`${label}\\s*:?\\s*[₹$]?\\s*([\\d,]+(?:\\.\\d+)?)`, 'i'));
+  return match ? amountValue(match[1]) : 0;
+};
+
+const normalizeBatchResult = (response, file) => ({
+  ...response,
+  fileName: file.name,
+  invoiceNumber: responseValue(response, ['invoice_number', 'invoiceNumber']),
+  vendorName: responseValue(response, ['vendor_customer', 'vendor', 'vendor_name', 'vendorName']),
+  subtotal: amountValue(responseValue(response, ['subtotal', 'taxable_amount', 'taxableAmount'], textAmount(response?.rawText, 'Taxable Value'))),
+  gstAmount: amountValue(responseValue(response, ['calculated_gst_amount', 'gst_amount', 'gstAmount'], textAmount(response?.rawText, 'GST'))),
+  totalAmount: amountValue(responseValue(response, ['total_amount', 'totalAmount', 'net_payable_amount', 'netPayable'], textAmount(response?.rawText, 'Invoice Amount|Total Amount|Net Payable Amount'))),
+});
+
 const Upload = () => {
   const { addInvoice, setActivePage } = useFinGuard();
 
@@ -146,7 +177,7 @@ const Upload = () => {
       for (const [index, file] of selectedFiles.entries()) {
         setStatusText(`Analyzing document ${index + 1} of ${selectedFiles.length}...`);
         const response = await uploadAndProcessDocument(file, 'usr_101', documentType);
-        results.push(response);
+        results.push(normalizeBatchResult(response, file));
       }
 
       if (results.length > 0) {
@@ -555,6 +586,23 @@ const Upload = () => {
                 </div>
                 <RiskBadge riskLevel={analysisResult.riskLevel} />
               </div>
+
+              {analysisResult.batchCount > 1 && (
+                <div style={{ marginBottom: '1.25rem', padding: '1rem', border: '1px solid var(--border-emerald)', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.08)' }}>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Combined amount for {analysisResult.batchCount} documents</span>
+                  <div className="mono font-bold" style={{ fontSize: '1.5rem', color: 'var(--emerald-400)', marginTop: '0.25rem' }}>
+                    ₹{analysisResult.batchResults.reduce((total, item) => total + amountValue(item.totalAmount), 0).toFixed(2)}
+                  </div>
+                  <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.4rem' }}>
+                    {analysisResult.batchResults.map((item) => (
+                      <div key={item.fileName} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.fileName}</span>
+                        <span className="mono">₹{amountValue(item.totalAmount).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Extracted Fields */}
               <div style={{
