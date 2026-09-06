@@ -3,7 +3,6 @@ import {
   AlertCircle,
   Check,
   CheckCircle2,
-  FileImage,
   FileText,
   LoaderCircle,
   Sparkles,
@@ -131,6 +130,33 @@ const getSummary = (response) => ({
   complianceFlags: getComplianceFlags(response),
 });
 
+const numericAmount = (value) => {
+  const amount = Number(String(value).replace(/[^\d.-]/g, ''));
+  return Number.isFinite(amount) ? amount : 0;
+};
+
+const combineSummaries = (summaries) => {
+  const totalDebit = summaries.reduce((total, item) => total + numericAmount(item.totalDebit), 0);
+  const totalCredit = summaries.reduce((total, item) => total + numericAmount(item.totalCredit), 0);
+  const hasTotals = summaries.some((item) => item.totalDebit !== 'Not available' || item.totalCredit !== 'Not available');
+
+  return {
+    rawText: summaries.map((item, index) => `Document ${index + 1}\n${item.rawText}`).filter(Boolean).join('\n\n'),
+    documentType: `${summaries.length} documents`,
+    ledgerCategory: 'Combined ledger',
+    gstAmount: 'Not available', tdsAmount: 'Not available', totalAmount: 'Not available',
+    invoiceNumber: `${summaries.length} documents`, vendor: 'Multiple documents', date: 'Multiple dates',
+    subtotal: 'Not available', paymentStatus: 'Not available',
+    totalDebit: hasTotals ? totalDebit.toFixed(2) : 'Not available',
+    totalCredit: hasTotals ? totalCredit.toFixed(2) : 'Not available',
+    balanceCheck: hasTotals ? (Math.abs(totalDebit - totalCredit) < 0.01 ? 'PASS' : 'MISMATCH') : 'Not available',
+    bankTransactionFound: 'Not available', matchingStatus: 'Not available', difference: 'Not available',
+    finalStatus: summaries.some((item) => item.finalStatus === 'MISMATCH') ? 'MISMATCH' : 'APPROVED',
+    ledgerRows: summaries.flatMap((item) => item.ledgerRows),
+    complianceFlags: Object.assign({}, ...summaries.map((item) => item.complianceFlags)),
+  };
+};
+
 const formatAmount = (value) => {
   if (typeof value === 'number') return value.toFixed(2);
   return value;
@@ -140,8 +166,7 @@ const UploadModal = ({ onClose, onUploadSuccess, userId: authenticatedUserId }) 
   const fileInputRef = useRef(null);
   const [userId, setUserId] = useState(authenticatedUserId || 'usr_101');
   const [documentType, setDocumentType] = useState('invoice');
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeStage, setActiveStage] = useState(-1);
@@ -149,15 +174,8 @@ const UploadModal = ({ onClose, onUploadSuccess, userId: authenticatedUserId }) 
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!selectedFile || !selectedFile.type.startsWith('image/')) {
-      setPreviewUrl('');
-      return undefined;
-    }
-
-    const objectUrl = URL.createObjectURL(selectedFile);
-    setPreviewUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [selectedFile]);
+    if (authenticatedUserId) setUserId(authenticatedUserId);
+  }, [authenticatedUserId]);
 
   useEffect(() => {
     if (!isProcessing) return undefined;
@@ -181,23 +199,28 @@ const UploadModal = ({ onClose, onUploadSuccess, userId: authenticatedUserId }) 
     return '';
   };
 
-  const selectFile = (file) => {
-    const validationError = validateFile(file);
-    setError(validationError);
+  const selectFiles = (files) => {
+    const nextFiles = Array.from(files || []);
+    const validationError = nextFiles.length === 0
+      ? 'Choose at least one PDF file to continue.'
+      : nextFiles.map(validateFile).find(Boolean);
+    setError(validationError || '');
     setSummary(null);
-    if (!validationError) setSelectedFile(file);
-    else setSelectedFile(null);
+    if (!validationError) setSelectedFiles(nextFiles);
+    else setSelectedFiles([]);
   };
 
   const handleDrop = (event) => {
     event.preventDefault();
     setIsDragging(false);
-    selectFile(event.dataTransfer.files?.[0]);
+    selectFiles(event.dataTransfer.files);
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const validationError = validateFile(selectedFile);
+    const validationError = selectedFiles.length === 0
+      ? 'Choose at least one PDF file to continue.'
+      : selectedFiles.map(validateFile).find(Boolean);
 
     if (!userId.trim()) {
       setError('Enter a user ID before uploading.');
@@ -213,16 +236,17 @@ const UploadModal = ({ onClose, onUploadSuccess, userId: authenticatedUserId }) 
     setIsProcessing(true);
 
     try {
-      const response = await uploadAndProcessDocument(selectedFile, userId.trim(), documentType);
-      const responseSummary = getSummary(response);
-      await insertLedgerEntries(responseSummary.ledgerRows, {
-        userId: userId.trim(),
-        documentType: responseSummary.documentType,
-        date: responseSummary.date,
-        invoiceNumber: responseSummary.invoiceNumber,
-        vendor: responseSummary.vendor,
-      });
-      setSummary(responseSummary);
+      const processedSummaries = [];
+      for (const file of selectedFiles) {
+        const response = await uploadAndProcessDocument(file, userId.trim(), documentType);
+        const responseSummary = getSummary(response);
+        await insertLedgerEntries(responseSummary.ledgerRows, {
+          userId: userId.trim(), documentType,
+          date: responseSummary.date, invoiceNumber: responseSummary.invoiceNumber, vendor: responseSummary.vendor,
+        });
+        processedSummaries.push(responseSummary);
+      }
+      setSummary(combineSummaries(processedSummaries));
       setActiveStage(PROCESSING_STAGES.length - 1);
       onUploadSuccess?.(response);
     } catch (uploadError) {
@@ -233,8 +257,7 @@ const UploadModal = ({ onClose, onUploadSuccess, userId: authenticatedUserId }) 
   };
 
   const clearFile = () => {
-    setSelectedFile(null);
-    setPreviewUrl('');
+    setSelectedFiles([]);
     setSummary(null);
     setError('');
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -290,7 +313,8 @@ const UploadModal = ({ onClose, onUploadSuccess, userId: authenticatedUserId }) 
               disabled={isProcessing}
               className="w-full rounded-xl border border-slate-700 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 disabled:opacity-60"
             >
-              <option value="invoice">Invoice</option>
+              <option value="debit_invoice">Debit Invoice</option>
+              <option value="credit_invoice">Credit Invoice</option>
               <option value="bank_statement">Bank Statement</option>
             </select>
           </label>
@@ -299,12 +323,13 @@ const UploadModal = ({ onClose, onUploadSuccess, userId: authenticatedUserId }) 
             ref={fileInputRef}
             type="file"
             accept={ACCEPTED_FILE_TYPES}
+            multiple
             className="sr-only"
-            onChange={(event) => selectFile(event.target.files?.[0])}
+            onChange={(event) => selectFiles(event.target.files)}
             disabled={isProcessing}
           />
 
-          {!selectedFile ? (
+          {selectedFiles.length === 0 ? (
             <button
               type="button"
               className={`flex min-h-48 w-full flex-col items-center justify-center rounded-2xl border border-dashed px-6 text-center transition ${isDragging ? 'border-emerald-400 bg-emerald-400/10' : 'border-slate-600 bg-slate-950/40 hover:border-emerald-500 hover:bg-emerald-500/5'}`}
@@ -323,17 +348,15 @@ const UploadModal = ({ onClose, onUploadSuccess, userId: authenticatedUserId }) 
             </button>
           ) : (
             <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/5 p-4">
-              <div className="flex items-center gap-4">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
-                  {previewUrl ? (
-                    <img src={previewUrl} alt="Selected document preview" className="h-full w-full object-cover" />
-                  ) : (
-                    <FileText className="text-emerald-400" size={28} aria-hidden="true" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-slate-100">{selectedFile.name}</p>
-                  <p className="mt-1 text-sm text-slate-400">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+              <div className="flex items-start gap-4">
+                <FileText className="mt-1 shrink-0 text-emerald-400" size={28} aria-hidden="true" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  {selectedFiles.map((file) => (
+                    <div key={`${file.name}-${file.lastModified}`} className="flex items-center justify-between gap-3">
+                      <p className="truncate font-semibold text-slate-100">{file.name}</p>
+                      <p className="shrink-0 text-sm text-slate-400">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
+                  ))}
                 </div>
                 <button
                   type="button"
@@ -346,8 +369,8 @@ const UploadModal = ({ onClose, onUploadSuccess, userId: authenticatedUserId }) 
                 </button>
               </div>
               <p className="mt-3 flex items-center gap-2 text-xs text-emerald-300">
-                {selectedFile.type.startsWith('image/') ? <FileImage size={14} /> : <FileText size={14} />}
-                Ready for Gemini AI tax and ledger analysis
+                <FileText size={14} />
+                {selectedFiles.length} PDF document{selectedFiles.length === 1 ? '' : 's'} ready for analysis
               </p>
             </div>
           )}
@@ -507,10 +530,10 @@ const UploadModal = ({ onClose, onUploadSuccess, userId: authenticatedUserId }) 
               <button
                 type="submit"
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={isProcessing || !selectedFile}
+                disabled={isProcessing || selectedFiles.length === 0}
               >
                 {isProcessing ? <LoaderCircle className="animate-spin" size={17} /> : <UploadCloud size={17} />}
-                {isProcessing ? 'Processing...' : 'Upload & process'}
+                {isProcessing ? `Processing ${selectedFiles.length} document${selectedFiles.length === 1 ? '' : 's'}...` : `Upload ${selectedFiles.length} document${selectedFiles.length === 1 ? '' : 's'}`}
               </button>
             )}
           </div>
