@@ -586,6 +586,9 @@ const Upload = () => {
                 </div>
                 <RiskBadge riskLevel={analysisResult.riskLevel} />
               </div>
+              <p style={{ marginBottom: '1.25rem', color: 'var(--text-muted)', fontSize: '0.78rem', lineHeight: 1.4 }}>
+                Indicative results only — consult a qualified professional before filing or making financial decisions
+              </p>
 
               {analysisResult.batchCount > 1 && (
                 <div style={{ marginBottom: '1.25rem', padding: '1rem', border: '1px solid var(--border-emerald)', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.08)' }}>
