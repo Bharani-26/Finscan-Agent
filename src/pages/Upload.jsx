@@ -712,6 +712,39 @@ const Upload = () => {
                 </div>
               )}
 
+              {analysisResult.batchResults?.length > 0 && (
+                <div style={{ marginBottom: '1.25rem', display: 'grid', gap: '0.75rem' }}>
+                  {analysisResult.batchResults.map((item, index) => (
+                    <div key={`tax-details-${item.fileName}-${index}`} style={{ padding: '1rem', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', background: 'rgba(15, 23, 42, 0.55)' }}>
+                      <h4 style={{ margin: '0 0 0.75rem', color: 'var(--text-main)', fontSize: '0.9rem' }}>
+                        Accounting Details: {item.fileName}
+                      </h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.6rem 1rem' }}>
+                        {[
+                          ['Document Type', item.processedDocumentType],
+                          ['Invoice Number', item.invoiceNumber],
+                          ['Taxable Amount', item.taxableAmount],
+                          ['GST Rate', item.gstRate],
+                          ['CGST', item.cgst],
+                          ['SGST', item.sgst],
+                          ['IGST', item.igst],
+                          ['TDS Section', item.tdsSection],
+                          ['TDS Rate', item.tdsRate],
+                          ['TDS Amount', item.tdsAmount],
+                          ['Net Payable', item.netPayable],
+                          ['Reconciliation Status', item.reconciliationStatus],
+                        ].map(([label, value]) => (
+                          <div key={label}>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>{label}</span>
+                            <div className="mono" style={{ color: 'var(--text-main)', fontSize: '0.8rem' }}>{value || 'Missing'}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div style={{ marginBottom: '1.25rem', padding: '1rem', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', background: 'rgba(15, 23, 42, 0.55)' }}>
                 <h4 style={{ margin: '0 0 0.85rem', color: 'var(--text-main)', fontSize: '0.9rem' }}>Ledger Entry Details</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.65rem 1rem' }}>
