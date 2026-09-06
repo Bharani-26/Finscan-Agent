@@ -78,9 +78,34 @@ const normalizeBatchResult = (response, file) => {
   rawText: text,
   invoiceNumber: responseValue(response, ['invoice_number', 'invoiceNumber'], textValue(text, 'Invoice Number')),
   vendorName: responseValue(response, ['vendor_customer', 'vendor', 'vendor_name', 'vendorName'], textValue(text, 'Vendor Name|Vendor|Customer')),
+  date: responseValue(response, ['date', 'invoice_date', 'invoiceDate'], textValue(text, 'Date')),
   subtotal: amountValue(responseValue(response, ['subtotal', 'taxable_amount', 'taxableAmount'], textAmount(text, 'Taxable Value|Subtotal'))),
   gstAmount: amountValue(responseValue(response, ['calculated_gst_amount', 'gst_amount', 'gstAmount'], textAmount(text, 'GST|GST Amount'))),
   totalAmount: amountValue(responseValue(response, ['total_amount', 'totalAmount', 'net_payable_amount', 'netPayable'], textAmount(text, 'Invoice Amount|Total Amount|Net Payable Amount'))),
+  entryId: responseValue(response, ['entry_id', 'entryId'], textValue(text, 'Entry ID')),
+  transactionType: responseValue(response, ['transaction_type', 'transactionType'], textValue(text, 'Transaction Type')),
+  description: responseValue(response, ['description', 'narrative'], textValue(text, 'Description/Narration|Description|Narration')),
+  invoiceDate: responseValue(response, ['invoice_date', 'invoiceDate'], textValue(text, 'Invoice Date')),
+  partyGstin: responseValue(response, ['party_gstin', 'partyGstin', 'gstin'], textValue(text, 'Party GSTIN|GSTIN')),
+  accountName: responseValue(response, ['account_name', 'accountName', 'ledger_name'], textValue(text, 'Account/Ledger Name|Account')),
+  taxableAmount: amountValue(responseValue(response, ['taxable_amount', 'taxableAmount'], textAmount(text, 'Taxable Amount|Taxable Value'))),
+  debitAmount: responseValue(response, ['debit_amount', 'debitAmount'], textAmount(text, 'Debit Amount')),
+  creditAmount: responseValue(response, ['credit_amount', 'creditAmount'], textAmount(text, 'Credit Amount')),
+  gstRate: responseValue(response, ['gst_rate', 'gstRate'], textValue(text, 'GST Rate')),
+  cgst: responseValue(response, ['cgst'], textAmount(text, 'CGST')),
+  sgst: responseValue(response, ['sgst'], textAmount(text, 'SGST')),
+  igst: responseValue(response, ['igst'], textAmount(text, 'IGST')),
+  tdsSection: responseValue(response, ['tds_section', 'tdsSection'], textValue(text, 'TDS Section')),
+  tdsRate: responseValue(response, ['tds_rate', 'tdsRate'], textValue(text, 'TDS Rate')),
+  tdsAmount: responseValue(response, ['tds_amount', 'tdsAmount'], textAmount(text, 'TDS Amount|TDS')),
+  netPayable: responseValue(response, ['net_payable_amount', 'netPayable'], textAmount(text, 'Net Payable Amount|Net Payable')),
+  bankReference: responseValue(response, ['bank_reference', 'bankReference', 'reference'], textValue(text, 'Bank Reference|Reference')),
+  paymentDate: responseValue(response, ['payment_date', 'paymentDate'], textValue(text, 'Payment Date')),
+  debitAccount: responseValue(response, ['debit_account', 'debitAccount'], textValue(text, 'Debit Account')),
+  creditAccount: responseValue(response, ['credit_account', 'creditAccount'], textValue(text, 'Credit Account')),
+  reconciliationStatus: responseValue(response, ['reconciliation_status', 'reconciliationStatus'], textValue(text, 'Reconciliation Status')),
+  complianceStatus: responseValue(response, ['compliance_status', 'complianceStatus'], textValue(text, 'Compliance Status')),
+  sourceDocument: responseValue(response, ['source_document', 'sourceDocument'], textValue(text, 'Source Document')),
   aiSummary: text || 'No analysis text returned by the processor.',
   ledgerRows: parseLedgerTable(text),
   });
@@ -647,6 +672,46 @@ const Upload = () => {
               <p style={{ marginBottom: '1.25rem', color: 'var(--text-muted)', fontSize: '0.78rem', lineHeight: 1.4 }}>
                 Indicative results only — consult a qualified professional before filing or making financial decisions
               </p>
+
+              <div style={{ marginBottom: '1.25rem', padding: '1rem', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', background: 'rgba(15, 23, 42, 0.55)' }}>
+                <h4 style={{ margin: '0 0 0.85rem', color: 'var(--text-main)', fontSize: '0.9rem' }}>Ledger Entry Details</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.65rem 1rem' }}>
+                  {[
+                    ['Entry ID', analysisResult.entryId],
+                    ['Date', analysisResult.date],
+                    ['Transaction Type', analysisResult.transactionType],
+                    ['Description / Narration', analysisResult.description],
+                    ['Invoice Number', analysisResult.invoiceNumber],
+                    ['Invoice Date', analysisResult.invoiceDate],
+                    ['Party / Vendor Name', analysisResult.vendorName],
+                    ['Party GSTIN', analysisResult.partyGstin],
+                    ['Account / Ledger Name', analysisResult.accountName],
+                    ['Debit Amount', analysisResult.debitAmount || analysisResult.subtotal],
+                    ['Credit Amount', analysisResult.creditAmount || analysisResult.totalAmount],
+                    ['Taxable Amount', analysisResult.taxableAmount],
+                    ['GST Rate', analysisResult.gstRate],
+                    ['CGST', analysisResult.cgst],
+                    ['SGST', analysisResult.sgst],
+                    ['IGST', analysisResult.igst],
+                    ['TDS Section', analysisResult.tdsSection],
+                    ['TDS Rate', analysisResult.tdsRate],
+                    ['TDS Amount', analysisResult.tdsAmount],
+                    ['Net Payable', analysisResult.netPayable],
+                    ['Bank Reference', analysisResult.bankReference],
+                    ['Payment Date', analysisResult.paymentDate],
+                    ['Debit Account', analysisResult.debitAccount],
+                    ['Credit Account', analysisResult.creditAccount],
+                    ['Reconciliation Status', analysisResult.reconciliationStatus],
+                    ['Compliance Status', analysisResult.complianceStatus],
+                    ['Source Document', analysisResult.sourceDocument],
+                  ].map(([label, value]) => (
+                    <div key={label} style={{ minWidth: 0 }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>{label}</span>
+                      <div className="mono" style={{ color: 'var(--text-main)', fontSize: '0.8rem', overflowWrap: 'anywhere' }}>{value || 'Missing'}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               {false && analysisResult.batchCount > 1 && (
                 <div style={{ marginBottom: '1.25rem', padding: '1rem', border: '1px solid var(--border-emerald)', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.08)' }}>
