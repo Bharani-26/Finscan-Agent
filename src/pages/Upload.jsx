@@ -70,7 +70,7 @@ const parseLedgerTable = (text) => {
   });
 };
 
-const normalizeBatchResult = (response, file) => {
+const normalizeBatchResult = (response, file, documentType = 'document') => {
   const text = responseText(response);
   const ledgerRows = parseLedgerTable(text);
   const firstLedgerRow = ledgerRows[0] || {};
@@ -80,6 +80,7 @@ const normalizeBatchResult = (response, file) => {
   return ({
   ...(Array.isArray(response) ? response[0] : response),
   fileName: file.name,
+  processedDocumentType: documentType,
   rawText: text,
   invoiceNumber: responseValue(response, ['invoice_number', 'invoiceNumber'], textValue(text, 'Invoice Number')),
   vendorName: responseValue(response, ['vendor_customer', 'vendor', 'vendor_name', 'vendorName'], textValue(text, 'Vendor Name|Vendor|Customer')),
@@ -140,6 +141,7 @@ const Upload = () => {
   const [panelState, setPanelState] = useState('idle');
   const [statusText, setStatusText] = useState('');
   const [analysisResult, setAnalysisResult] = useState(null);
+  const [completedResults, setCompletedResults] = useState([]);
   const [backendError, setBackendError] = useState(null);
 
   const fileInputRef = useRef(null);
@@ -262,13 +264,22 @@ const Upload = () => {
           ? relatedDocumentsRef.current.join('\n\n')
           : '';
         const response = await uploadAndProcessDocument(file, 'usr_101', documentType, relatedDocuments);
-        results.push(normalizeBatchResult(response, file));
+        results.push(normalizeBatchResult(response, file, documentType));
         const analyzedText = responseText(response);
         if (analyzedText) relatedDocumentsRef.current.push(`${documentType} (${file.name}):\n${analyzedText}`);
       }
 
       if (results.length > 0) {
-        setAnalysisResult({ ...results[0], batchCount: results.length, batchResults: results, documentType });
+        const combinedResults = [...completedResults, ...results];
+        const combinedLedgerRows = combinedResults.flatMap((item) => item.ledgerRows || []);
+        setCompletedResults(combinedResults);
+        setAnalysisResult({
+          ...results[results.length - 1],
+          batchCount: combinedResults.length,
+          batchResults: combinedResults,
+          ledgerRows: combinedLedgerRows,
+          documentType: 'combined_documents',
+        });
         setBackendError(null);
         setPanelState('success');
       }
@@ -686,6 +697,20 @@ const Upload = () => {
               <p style={{ marginBottom: '1.25rem', color: 'var(--text-muted)', fontSize: '0.78rem', lineHeight: 1.4 }}>
                 Indicative results only — consult a qualified professional before filing or making financial decisions
               </p>
+
+              {analysisResult.batchResults?.length > 0 && (
+                <div style={{ marginBottom: '1.25rem', padding: '1rem', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', background: 'rgba(15, 23, 42, 0.55)' }}>
+                  <h4 style={{ margin: '0 0 0.75rem', color: 'var(--text-main)', fontSize: '0.9rem' }}>Processed Documents</h4>
+                  <div style={{ display: 'grid', gap: '0.5rem' }}>
+                    {analysisResult.batchResults.map((item, index) => (
+                      <div key={`${item.fileName}-${index}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.8rem' }}>
+                        <span style={{ color: 'var(--text-main)' }}>{item.fileName}</span>
+                        <span style={{ color: 'var(--emerald-400)' }}>{item.processedDocumentType}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div style={{ marginBottom: '1.25rem', padding: '1rem', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', background: 'rgba(15, 23, 42, 0.55)' }}>
                 <h4 style={{ margin: '0 0 0.85rem', color: 'var(--text-main)', fontSize: '0.9rem' }}>Ledger Entry Details</h4>
