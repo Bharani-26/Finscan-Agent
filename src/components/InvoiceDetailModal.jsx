@@ -61,21 +61,21 @@ const InvoiceDetailModal = ({ invoice, onClose }) => {
           <div className="card" style={{ padding: '0.85rem' }}>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Subtotal</span>
             <div className="mono font-bold" style={{ fontSize: '1.05rem', color: 'var(--text-main)' }}>
-              ${typeof invoice.subtotal === 'number' ? invoice.subtotal.toFixed(2) : invoice.subtotal}
+              ₹{typeof invoice.subtotal === 'number' ? invoice.subtotal.toFixed(2) : invoice.subtotal}
             </div>
           </div>
 
           <div className="card" style={{ padding: '0.85rem' }}>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>GST / Tax</span>
             <div className="mono font-bold" style={{ fontSize: '1.05rem', color: 'var(--text-main)' }}>
-              ${typeof invoice.gstAmount === 'number' ? invoice.gstAmount.toFixed(2) : invoice.gstAmount}
+              ₹{typeof invoice.gstAmount === 'number' ? invoice.gstAmount.toFixed(2) : invoice.gstAmount}
             </div>
           </div>
 
           <div className="card" style={{ padding: '0.85rem', borderColor: 'var(--border-emerald)' }}>
             <span style={{ fontSize: '0.75rem', color: 'var(--emerald-400)' }}>Total Amount</span>
             <div className="mono font-bold" style={{ fontSize: '1.15rem', color: 'var(--emerald-400)' }}>
-              ${typeof invoice.totalAmount === 'number' ? invoice.totalAmount.toFixed(2) : invoice.totalAmount}
+              ₹{typeof invoice.totalAmount === 'number' ? invoice.totalAmount.toFixed(2) : invoice.totalAmount}
             </div>
           </div>
 
@@ -145,8 +145,8 @@ const InvoiceDetailModal = ({ invoice, onClose }) => {
                     <tr key={idx}>
                       <td>{item.description}</td>
                       <td style={{ textAlign: 'center' }}>{item.quantity}</td>
-                      <td className="mono" style={{ textAlign: 'right' }}>${item.rate?.toFixed(2)}</td>
-                      <td className="mono font-bold" style={{ textAlign: 'right' }}>${item.total?.toFixed(2)}</td>
+                      <td className="mono" style={{ textAlign: 'right' }}>₹{item.rate?.toFixed(2)}</td>
+                      <td className="mono font-bold" style={{ textAlign: 'right' }}>₹{item.total?.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>

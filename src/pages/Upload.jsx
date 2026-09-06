@@ -257,7 +257,7 @@ const Upload = () => {
   const loadTestPreset = (type) => {
     if (type === 'valid') {
       const mockFile = new File(
-        ['%PDF-1.4 Mock Invoice Content for Apex Cloud Hosting Subtotal: $1450.00 GST: $145.00'], 
+        ['%PDF-1.4 Mock Invoice Content for Apex Cloud Hosting Subtotal: ₹1450.00 GST: ₹145.00'], 
         'Tax_Invoice_Apex_Cloud.pdf', 
         { type: 'application/pdf' }
       );
@@ -667,14 +667,14 @@ const Upload = () => {
                 <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
                   <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Subtotal</span>
                   <p className="mono font-bold" style={{ fontSize: '0.95rem', color: 'var(--text-main)' }}>
-                    ${analysisResult.subtotal?.toFixed(2)}
+                    ₹{analysisResult.subtotal?.toFixed(2)}
                   </p>
                 </div>
 
                 <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
                   <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>GST / Tax Amount</span>
                   <p className="mono font-bold" style={{ fontSize: '0.95rem', color: 'var(--text-main)' }}>
-                    ${analysisResult.gstAmount?.toFixed(2)}
+                    ₹{analysisResult.gstAmount?.toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -693,7 +693,7 @@ const Upload = () => {
                 <div>
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Total Amount Extracted</span>
                   <div className="mono font-bold" style={{ fontSize: '1.4rem', color: 'var(--emerald-400)' }}>
-                    ${analysisResult.totalAmount?.toFixed(2)}
+                    ₹{analysisResult.totalAmount?.toFixed(2)}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>

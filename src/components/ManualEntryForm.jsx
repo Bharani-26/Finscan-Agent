@@ -191,7 +191,7 @@ const ManualEntryForm = ({ onSubmit, loading }) => {
           {/* Row 3: Subtotal, GST, Total */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.1fr', gap: '0.75rem' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Subtotal ($) *</label>
+              <label className="form-label">Subtotal (₹) *</label>
               <div style={{ position: 'relative' }}>
                 <DollarSign size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input
@@ -207,7 +207,7 @@ const ManualEntryForm = ({ onSubmit, loading }) => {
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">GST / Tax ($) *</label>
+              <label className="form-label">GST / Tax (₹) *</label>
               <div style={{ position: 'relative' }}>
                 <Calculator size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input
@@ -223,7 +223,7 @@ const ManualEntryForm = ({ onSubmit, loading }) => {
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label" style={{ color: 'var(--emerald-400)' }}>Total Amount ($) *</label>
+              <label className="form-label" style={{ color: 'var(--emerald-400)' }}>Total Amount (₹) *</label>
               <div style={{ position: 'relative' }}>
                 <DollarSign size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--emerald-400)' }} />
                 <input

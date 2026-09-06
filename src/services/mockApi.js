@@ -293,7 +293,7 @@ export const analyzeManualEntry = async (formData, onProgressUpdate) => {
 
   if (gstDiff > (subNum * 0.03)) {
     riskLevel = 'MEDIUM';
-    taxVerification = `WARNING: GST deviation detected. Claimed $${gstNum.toFixed(2)}, expected $${expectedGst.toFixed(2)}.`;
+    taxVerification = `WARNING: GST deviation detected. Claimed ₹${gstNum.toFixed(2)}, expected ₹${expectedGst.toFixed(2)}.`;
     riskNote = 'Flagged for GST rate discrepancy.';
   }
 
@@ -316,7 +316,7 @@ export const analyzeManualEntry = async (formData, onProgressUpdate) => {
     fileName: 'Manual Entry Submission',
     fileSize: 'Form Input',
     taxVerification: taxVerification,
-    aiSummary: `Manual entry audited for ${vendorName} (${invoiceNumber}). Subtotal: $${subNum.toFixed(2)}, GST: $${gstNum.toFixed(2)}, Total: $${totNum.toFixed(2)}. ${riskNote} ${notes ? `Notes: ${notes}` : ''}`,
+    aiSummary: `Manual entry audited for ${vendorName} (${invoiceNumber}). Subtotal: ₹${subNum.toFixed(2)}, GST: ₹${gstNum.toFixed(2)}, Total: ₹${totNum.toFixed(2)}. ${riskNote} ${notes ? `Notes: ${notes}` : ''}`,
     lineItems: [
       {
         description: notes || `${category} manual line item`,

@@ -97,7 +97,7 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="mono font-bold" style={{ fontSize: '1.8rem', color: 'var(--text-main)' }}>
-            ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ₹{totalValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
             Cumulative document subtotal + GST
@@ -222,7 +222,7 @@ const Dashboard = () => {
                       </span>
                     </td>
                     <td className="mono font-bold" style={{ textAlign: 'right', fontSize: '0.95rem' }}>
-                      ${typeof inv.totalAmount === 'number' ? inv.totalAmount.toFixed(2) : inv.totalAmount}
+                      ₹{typeof inv.totalAmount === 'number' ? inv.totalAmount.toFixed(2) : inv.totalAmount}
                     </td>
                     <td>
                       <RiskBadge riskLevel={inv.riskLevel} />
