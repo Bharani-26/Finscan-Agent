@@ -72,25 +72,27 @@ const parseLedgerTable = (text) => {
 
 const normalizeBatchResult = (response, file) => {
   const text = responseText(response);
+  const ledgerRows = parseLedgerTable(text);
+  const firstLedgerRow = ledgerRows[0] || {};
   return ({
   ...(Array.isArray(response) ? response[0] : response),
   fileName: file.name,
   rawText: text,
   invoiceNumber: responseValue(response, ['invoice_number', 'invoiceNumber'], textValue(text, 'Invoice Number')),
   vendorName: responseValue(response, ['vendor_customer', 'vendor', 'vendor_name', 'vendorName'], textValue(text, 'Vendor Name|Vendor|Customer')),
-  date: responseValue(response, ['date', 'invoice_date', 'invoiceDate'], textValue(text, 'Date')),
+  date: responseValue(response, ['date', 'invoice_date', 'invoiceDate'], textValue(text, 'Date') !== 'Missing' ? textValue(text, 'Date') : firstLedgerRow.date),
   subtotal: amountValue(responseValue(response, ['subtotal', 'taxable_amount', 'taxableAmount'], textAmount(text, 'Taxable Value|Subtotal'))),
   gstAmount: amountValue(responseValue(response, ['calculated_gst_amount', 'gst_amount', 'gstAmount'], textAmount(text, 'GST|GST Amount'))),
   totalAmount: amountValue(responseValue(response, ['total_amount', 'totalAmount', 'net_payable_amount', 'netPayable'], textAmount(text, 'Invoice Amount|Total Amount|Net Payable Amount'))),
   entryId: responseValue(response, ['entry_id', 'entryId'], textValue(text, 'Entry ID')),
   transactionType: responseValue(response, ['transaction_type', 'transactionType'], textValue(text, 'Transaction Type')),
-  description: responseValue(response, ['description', 'narrative'], textValue(text, 'Description/Narration|Description|Narration')),
+  description: responseValue(response, ['description', 'narrative'], textValue(text, 'Description/Narration|Description|Narration') !== 'Missing' ? textValue(text, 'Description/Narration|Description|Narration') : firstLedgerRow.narrative),
   invoiceDate: responseValue(response, ['invoice_date', 'invoiceDate'], textValue(text, 'Invoice Date')),
   partyGstin: responseValue(response, ['party_gstin', 'partyGstin', 'gstin'], textValue(text, 'Party GSTIN|GSTIN')),
-  accountName: responseValue(response, ['account_name', 'accountName', 'ledger_name'], textValue(text, 'Account/Ledger Name|Account')),
+  accountName: responseValue(response, ['account_name', 'accountName', 'ledger_name'], textValue(text, 'Account/Ledger Name|Account') !== 'Missing' ? textValue(text, 'Account/Ledger Name|Account') : firstLedgerRow.particulars),
   taxableAmount: amountValue(responseValue(response, ['taxable_amount', 'taxableAmount'], textAmount(text, 'Taxable Amount|Taxable Value'))),
-  debitAmount: responseValue(response, ['debit_amount', 'debitAmount'], textAmount(text, 'Debit Amount')),
-  creditAmount: responseValue(response, ['credit_amount', 'creditAmount'], textAmount(text, 'Credit Amount')),
+  debitAmount: responseValue(response, ['debit_amount', 'debitAmount'], textAmount(text, 'Debit Amount') || firstLedgerRow.debit),
+  creditAmount: responseValue(response, ['credit_amount', 'creditAmount'], textAmount(text, 'Credit Amount') || firstLedgerRow.credit),
   gstRate: responseValue(response, ['gst_rate', 'gstRate'], textValue(text, 'GST Rate')),
   cgst: responseValue(response, ['cgst'], textAmount(text, 'CGST')),
   sgst: responseValue(response, ['sgst'], textAmount(text, 'SGST')),
@@ -105,20 +107,17 @@ const normalizeBatchResult = (response, file) => {
   creditAccount: responseValue(response, ['credit_account', 'creditAccount'], textValue(text, 'Credit Account')),
   reconciliationStatus: responseValue(response, ['reconciliation_status', 'reconciliationStatus'], textValue(text, 'Reconciliation Status')),
   complianceStatus: responseValue(response, ['compliance_status', 'complianceStatus'], textValue(text, 'Compliance Status')),
-  sourceDocument: responseValue(response, ['source_document', 'sourceDocument'], textValue(text, 'Source Document')),
+  sourceDocument: responseValue(response, ['source_document', 'sourceDocument'], textValue(text, 'Source Document|Source Documentation')),
   aiSummary: text || 'No analysis text returned by the processor.',
-  ledgerRows: parseLedgerTable(text),
+  ledgerRows,
   });
 };
 
 const textValue = (text, label) => {
   const labels = label.split('|').map((item) => item.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  const lines = String(text || '').replace(/\\n/g, '\n').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const labelPattern = labels.join('|');
-  const match = lines
-    .map((line) => line.replace(/^[-*#\s]+|\*+/g, '').trim())
-    .map((line) => line.match(new RegExp(`^(?:${labelPattern})\\s*:?\\s*(?:[-–]\\s*)?(.*)$`, 'i')))
-    .find(Boolean);
+  const normalized = String(text || '').replace(/\\n/g, '\n').replace(/\*+/g, '');
+  const match = normalized.match(new RegExp(`(?:^|\\n|\\|)\\s*(?:${labelPattern})\\s*:?\\s*(?:[-–]\\s*)?([^\\n|]+)`, 'i'));
   return match && typeof match[1] === 'string' && match[1].trim() ? match[1].trim() : 'Missing';
 };
 
