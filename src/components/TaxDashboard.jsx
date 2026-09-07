@@ -128,7 +128,6 @@ export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
     gst: result.gst + invoice.gst,
     tds: result.tds + invoice.tds,
   }), { taxable: 0, gst: 0, tds: 0 });
-  const hasRecords = invoices.length > 0 || bankStatements.length > 0 || ledgerEntries.length > 0;
 
   return (
     <main className="dashboard-shell min-h-full overflow-hidden rounded-[28px] border border-slate-800/80 p-5 text-slate-100 shadow-2xl shadow-slate-950/30 sm:p-8">
@@ -169,8 +168,6 @@ export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
       {error && <div className="mt-5 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</div>}
       {loading ? (
         <div className="mt-5 flex min-h-64 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900/40 text-sm text-slate-400"><LoaderCircle size={19} className="mr-3 animate-spin text-indigo-400" /> Loading your records...</div>
-      ) : !hasRecords ? (
-        <EmptyState onOpenUpload={onOpenUpload} />
       ) : activeTab === 'ledger' ? (
         <LedgerTable entries={normalizedLedgerEntries} />
       ) : activeTab === 'tax' ? (
@@ -181,15 +178,6 @@ export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
     </main>
   );
 }
-
-const EmptyState = ({ onOpenUpload }) => (
-  <div className="mt-5 flex min-h-72 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-700 bg-slate-900/30 px-6 text-center">
-    <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-indigo-400/20 bg-indigo-400/10 text-indigo-300"><Upload size={24} /></span>
-    <h2 className="mt-5 text-lg font-semibold text-white">Your ledger is ready for its first document</h2>
-    <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">Upload an invoice or bank statement and FinScan AI will extract the numbers, tax components, and ledger categories.</p>
-    <button type="button" onClick={onOpenUpload} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-950/30 hover:bg-indigo-400"><Upload size={16} /> Upload your first document</button>
-  </div>
-);
 
 const TableShell = ({ title, subtitle, count, children }) => (
   <section className="dashboard-table mt-5 overflow-hidden rounded-2xl border border-slate-800/90 bg-slate-900/65">
