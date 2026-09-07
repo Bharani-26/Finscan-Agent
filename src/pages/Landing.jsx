@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Menu, X, ScanLine } from 'lucide-react';
 import HeroScene from '../components/landing/HeroScene';
 import './Landing.css';
@@ -34,11 +34,23 @@ const PLANS = [
 export default function Landing({ onAccess, onSignUp }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const videoRef = useRef(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const playPromise = video.play();
+    if (playPromise) {
+      playPromise.catch(() => {
+        /* autoplay may be blocked until user interaction */
+      });
+    }
   }, []);
 
   const goTo = (id) => {
@@ -96,6 +108,7 @@ export default function Landing({ onAccess, onSignUp }) {
       <section id="home" className="hero">
         <div className="hero-media">
           <video
+            ref={videoRef}
             className="hero-video"
             autoPlay
             loop
