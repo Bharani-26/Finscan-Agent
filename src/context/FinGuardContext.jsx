@@ -1,13 +1,17 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { 
-  supabase, 
-  getStoredInvoices, 
-  saveInvoiceToStore, 
-  getStoredAlerts, 
+import { hasSupabaseConfig, supabase as supabaseClient } from '../services/api';
+import {
+  supabase as mockSupabase,
+  getStoredInvoices,
+  saveInvoiceToStore,
+  getStoredAlerts,
   updateAlertStatusInStore,
   updateProfile,
   getStoredProfile
 } from '../services/mockApi';
+
+const activeSupabase = hasSupabaseConfig ? supabaseClient : mockSupabase;
 
 const FinGuardContext = createContext(null);
 
@@ -24,7 +28,7 @@ export const FinGuardProvider = ({ children }) => {
   // Initialize session and stored data on mount
   useEffect(() => {
     const initSession = async () => {
-      const { data } = await supabase.auth.getSession();
+      const { data } = await activeSupabase.auth.getSession();
       if (data?.session) {
         setSession(data.session);
         setUser(data.session.user);
@@ -47,7 +51,7 @@ export const FinGuardProvider = ({ children }) => {
 
   // Auth Handlers
   const login = async (email, password) => {
-    const res = await supabase.auth.signInWithPassword({ email, password });
+    const res = await activeSupabase.auth.signInWithPassword({ email, password });
     if (res.error) {
       return { success: false, error: res.error.message };
     }
@@ -58,7 +62,7 @@ export const FinGuardProvider = ({ children }) => {
   };
 
   const register = async (name, businessName, email, password) => {
-    const res = await supabase.auth.signUp({
+    const res = await activeSupabase.auth.signUp({
       email,
       password,
       options: { data: { name, businessName } }
@@ -73,7 +77,7 @@ export const FinGuardProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    await activeSupabase.auth.signOut();
     setUser(null);
     setSession(null);
     setActivePage('dashboard');
@@ -84,7 +88,6 @@ export const FinGuardProvider = ({ children }) => {
   const updateUserProfile = async (profileData) => {
     const res = await updateProfile(profileData);
     if (res.success) {
-      // Update local state
       setUser(prev => ({
         ...prev,
         email: profileData.email,
@@ -166,5 +169,4 @@ export const useFinGuard = () => {
   return context;
 };
 
-// Alias export for Finscan naming consistency
 export const useFinscan = useFinGuard;

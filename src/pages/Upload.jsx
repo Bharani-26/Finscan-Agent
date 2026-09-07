@@ -1,24 +1,21 @@
 import React, { useState, useRef } from 'react';
 import { useFinGuard } from '../context/FinGuardContext';
 import { uploadAndProcessDocument } from '../services/api';
-import { analyzeManualEntry } from '../services/mockApi';
-import { 
-  UploadCloud, 
-  FileCheck, 
-  X, 
-  AlertCircle, 
-  Sparkles, 
-  ShieldCheck, 
-  PlusCircle, 
+import {
+  UploadCloud,
+  FileCheck,
+  X,
+  AlertCircle,
+  Sparkles,
+  ShieldCheck,
   FileText,
   FileCode,
   Zap,
-  Edit3
+  PlusCircle
 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 import RiskBadge from '../components/RiskBadge';
-import ManualEntryForm from '../components/ManualEntryForm';
 
 const responseValue = (response, keys, fallback = 'Missing') => {
   const unwrapped = Array.isArray(response) ? response[0] : response;
@@ -134,9 +131,6 @@ const textValue = (text, label) => {
 const Upload = () => {
   const { addInvoice, setActivePage } = useFinGuard();
 
-  // Mode Tab: 'upload' | 'manual'
-  const [activeTab, setActiveTab] = useState('upload');
-
   // File Picker State
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [selectedDocuments, setSelectedDocuments] = useState([]);
@@ -162,13 +156,6 @@ const Upload = () => {
     setStatusText('');
   };
 
-  const handleTabSwitch = (tab) => {
-    setActiveTab(tab);
-    resetAnalysisState();
-    setSelectedFiles([]);
-    setValidationError(null);
-  };
-
   const handleDocumentTypeChange = (type) => {
     setDocumentType(type);
     setSelectedFiles([]);
@@ -184,16 +171,16 @@ const Upload = () => {
       return 'Please upload a valid invoice or bill before analyzing';
     }
 
-    const validTypes = ['application/pdf'];
+    const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
     const fileName = file.name || '';
     const fileType = file.type || '';
-    const hasValidExt = /\.pdf$/i.test(fileName);
+    const hasValidExt = /\.(pdf|jpg|jpeg|png)$/i.test(fileName);
 
     if (!validTypes.includes(fileType.toLowerCase()) && !hasValidExt) {
-      return 'Only PDF files are supported.';
+      return 'Only PDF, JPG, and PNG files are supported.';
     }
 
-    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+    const MAX_SIZE = 10 * 1024 * 1024;
     if (file.size === 0 || file.size > MAX_SIZE) {
       return 'File is empty or too large (max 10MB).';
     }
@@ -265,7 +252,7 @@ const Upload = () => {
   // Handle Analyze Document Submission (File Flow)
   const handleAnalyzeClick = async () => {
     if (selectedDocuments.length === 0) {
-      setValidationError('Choose at least one PDF file before analyzing.');
+      setValidationError('Choose at least one PDF, JPG, or PNG file before analyzing.');
       return;
     }
 
@@ -313,33 +300,6 @@ const Upload = () => {
     }
   };
 
-  // Handle Manual Entry Submission Flow
-  const handleManualEntrySubmit = async (formData) => {
-    resetAnalysisState();
-    setPanelState('loading');
-    setStatusText('Validating manual entries...');
-
-    try {
-      const response = await analyzeManualEntry(formData, (progress) => {
-        setStatusText(progress);
-      });
-
-      if (response && response.success && response.data) {
-        setAnalysisResult(response.data);
-        setBackendError(null);
-        setPanelState('success');
-      } else {
-        setAnalysisResult(null);
-        setBackendError(response?.error || 'Manual validation failed. Check required fields.');
-        setPanelState('failure');
-      }
-    } catch (error) {
-      setAnalysisResult(null);
-      setBackendError('An error occurred processing manual entry submission.');
-      setPanelState('failure');
-    }
-  };
-
   // Save to Dashboard
   const handleSaveToDashboard = () => {
     if (analysisResult) {
@@ -378,81 +338,23 @@ const Upload = () => {
 
   return (
     <div>
-      {/* Title */}
       <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>Upload & Document Analysis</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Extract totals, vendor details, tax information, and compliance checks from valid bills or manual entries.
+            Extract totals, vendor details, tax information, and compliance checks from valid bills and statements.
           </p>
-        </div>
-
-        {/* Tab Toggle: Upload Document vs Enter Manually */}
-        <div style={{
-          display: 'flex',
-          backgroundColor: 'rgba(15, 23, 42, 0.8)',
-          border: '1px solid var(--border-medium)',
-          borderRadius: 'var(--radius-md)',
-          padding: '0.25rem'
-        }}>
-          <button
-            onClick={() => handleTabSwitch('upload')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.5rem 1rem',
-              borderRadius: 'var(--radius-sm)',
-              border: 'none',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              backgroundColor: activeTab === 'upload' ? 'var(--emerald-500)' : 'transparent',
-              color: activeTab === 'upload' ? '#ffffff' : 'var(--text-muted)'
-            }}
-          >
-            <UploadCloud size={16} />
-            <span>Upload Document</span>
-          </button>
-
-          <button
-            onClick={() => handleTabSwitch('manual')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.5rem 1rem',
-              borderRadius: 'var(--radius-sm)',
-              border: 'none',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              backgroundColor: activeTab === 'manual' ? 'var(--emerald-500)' : 'transparent',
-              color: activeTab === 'manual' ? '#ffffff' : 'var(--text-muted)'
-            }}
-          >
-            <Edit3 size={16} />
-            <span>Enter Manually</span>
-          </button>
         </div>
       </div>
 
-      {/* Grid: Upload Picker/Manual Form (Left) & Results Panel (Right) */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'minmax(340px, 1fr) minmax(360px, 1.2fr)',
         gap: '1.5rem',
         alignItems: 'start'
       }}>
-        
-        {/* Left Column: Tab 1 (File Upload) OR Tab 2 (Manual Entry) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          
-          {activeTab === 'upload' ? (
-            <>
-              <div className="card" style={{ padding: '1.5rem' }}>
+          <div className="card" style={{ padding: '1.5rem' }}>
                 <h3 style={{ fontSize: '1.05rem', marginBottom: '1rem', color: 'var(--text-main)' }}>
                   1. Select Financial Document
                 </h3>
@@ -510,7 +412,7 @@ const Upload = () => {
                     type="file"
                     ref={fileInputRef}
                     style={{ display: 'none' }}
-                    accept=".pdf,application/pdf"
+                    accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
                     multiple
                     onChange={(e) => {
                       if (e.target.files && e.target.files.length > 0) {
@@ -537,16 +439,16 @@ const Upload = () => {
                     <div>
                       {selectedFiles.map((file) => <p key={`${file.name}-${file.lastModified}`} style={{ fontWeight: 600, color: 'var(--emerald-400)', fontSize: '0.9rem', wordBreak: 'break-all' }}>{file.name}</p>)}
                       <p className="mono" style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                        {selectedFiles.length} PDF document{selectedFiles.length === 1 ? '' : 's'} ready to analyze
+                        {selectedFiles.length} file{selectedFiles.length === 1 ? '' : 's'} ready to analyze
                       </p>
                     </div>
                   ) : (
                     <div>
                       <p style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '0.95rem' }}>
-                        Drag & drop invoice here, or <span className="text-emerald">browse</span>
+                        Drag & drop PDF, JPG, or PNG here, or <span className="text-emerald">browse</span>
                       </p>
                       <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
-                        Select three PDFs together (Max 10MB each)
+                        Select up to three supported files (Max 10MB each)
                       </p>
                     </div>
                   )}
@@ -636,14 +538,6 @@ const Upload = () => {
                   </button>
                 </div>
               </div>
-            </>
-          ) : (
-            /* Tab 2: Manual Entry Form */
-            <ManualEntryForm
-              onSubmit={handleManualEntrySubmit}
-              loading={panelState === 'loading'}
-            />
-          )}
 
         </div>
 
@@ -683,7 +577,7 @@ const Upload = () => {
                 No document analyzed yet
               </p>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                Upload a file or complete manual entry to begin.
+                Upload a valid document to begin.
               </p>
             </div>
           )}
@@ -818,104 +712,6 @@ const Upload = () => {
                   ))}
                 </div>
               </div>
-
-              {false && analysisResult.batchCount > 1 && (
-                <div style={{ marginBottom: '1.25rem', padding: '1rem', border: '1px solid var(--border-emerald)', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.08)' }}>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Combined amount for {analysisResult.batchCount} documents</span>
-                  <div className="mono font-bold" style={{ fontSize: '1.5rem', color: 'var(--emerald-400)', marginTop: '0.25rem' }}>
-                    ₹{analysisResult.batchResults.reduce((total, item) => total + amountValue(item.totalAmount), 0).toFixed(2)}
-                  </div>
-                  <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.4rem' }}>
-                    {analysisResult.batchResults.map((item) => (
-                      <div key={item.fileName} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.8rem', color: 'var(--text-main)' }}>
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.fileName}</span>
-                        <span className="mono">₹{amountValue(item.totalAmount).toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {false && <>
-              {/* Extracted Fields */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '0.75rem',
-                marginBottom: '1.25rem'
-              }}>
-                <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Invoice Number</span>
-                  <p className="mono font-bold" style={{ fontSize: '0.95rem', color: 'var(--text-main)' }}>
-                    {analysisResult.invoiceNumber}
-                  </p>
-                </div>
-
-                <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Vendor Name</span>
-                  <p style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {analysisResult.vendorName}
-                  </p>
-                </div>
-
-                <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Subtotal</span>
-                  <p className="mono font-bold" style={{ fontSize: '0.95rem', color: 'var(--text-main)' }}>
-                    ₹{analysisResult.subtotal?.toFixed(2)}
-                  </p>
-                </div>
-
-                <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>GST / Tax Amount</span>
-                  <p className="mono font-bold" style={{ fontSize: '0.95rem', color: 'var(--text-main)' }}>
-                    ₹{analysisResult.gstAmount?.toFixed(2)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Total Extracted */}
-              <div style={{
-                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.02) 100%)',
-                border: '1px solid var(--border-emerald)',
-                borderRadius: 'var(--radius-md)',
-                padding: '1rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: '1.25rem'
-              }}>
-                <div>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Total Amount Extracted</span>
-                  <div className="mono font-bold" style={{ fontSize: '1.4rem', color: 'var(--emerald-400)' }}>
-                    ₹{analysisResult.totalAmount?.toFixed(2)}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Category</span>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                    {analysisResult.category}
-                  </div>
-                </div>
-              </div>
-
-              {/* AI Summary */}
-              <div style={{ marginBottom: '1.5rem', flex: 1 }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>
-                  AI Summary & Compliance Audit
-                </span>
-                <p style={{
-                  fontSize: '0.85rem',
-                  color: 'var(--text-main)',
-                  lineHeight: 1.5,
-                  backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                  padding: '0.85rem',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-subtle)'
-                }}>
-                  {analysisResult.aiSummary}
-                </p>
-              </div>
-              </>}
 
               {analysisResult.ledgerRows?.length > 0 && (
                 <div style={{ marginBottom: '1.5rem', overflowX: 'auto', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)' }}>

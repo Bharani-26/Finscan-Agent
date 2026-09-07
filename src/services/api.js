@@ -1,25 +1,63 @@
 import { createClient } from '@supabase/supabase-js';
 import { ACCOUNTING_AGENT_PROMPT } from './accountingPrompt';
+import { analyzeDocument } from './mockApi';
 
-// Load Vite Environment Variables
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key';
 const n8nWebhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL;
+export const hasSupabaseConfig = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
+const hasWebhookConfig = Boolean(import.meta.env.VITE_N8N_WEBHOOK_URL);
+
+const readStorage = (key, fallback = []) => {
+  if (typeof window === 'undefined' || !window.localStorage) return fallback;
+
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const writeStorage = (key, value) => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  }
+  return value;
+};
 
 const isMissingLedgerTableError = (error) => error?.code === 'PGRST205'
   || error?.message?.includes("Could not find the table 'public.ledger_entries'");
 
-// Initialize Supabase Client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = hasSupabaseConfig
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            order: async () => ({ data: [], error: null }),
+          }),
+        }),
+        insert: () => ({
+          select: async () => ({ data: [], error: null }),
+        }),
+      }),
+      auth: {
+        getSession: async () => ({ data: { session: null }, error: null }),
+        signInWithPassword: async () => ({ data: { user: null, session: null }, error: null }),
+        signOut: async () => ({ error: null }),
+      },
+    };
 
-/**
- * Uploads a document to the n8n webhook for Gemini AI tax calculation and ledger assignment.
- * @param {File} file - The uploaded PDF or Image invoice/bank statement.
- * @param {string} userId - User identifier (defaults to 'usr_101').
- */
 export async function uploadAndProcessDocument(file, userId = 'usr_101', documentType = 'invoice', relatedDocuments = '') {
-  if (!n8nWebhookUrl) {
-    throw new Error('VITE_N8N_WEBHOOK_URL is not defined in your .env file.');
+  if (!hasWebhookConfig) {
+    const result = await analyzeDocument(file, () => {});
+    if (!result.success) {
+      throw new Error(result.error || 'Document analysis failed.');
+    }
+    return result.data;
   }
 
   const formData = new FormData();
@@ -51,11 +89,11 @@ export async function uploadAndProcessDocument(file, userId = 'usr_101', documen
   }
 }
 
-/**
- * Fetches processed invoices and tax calculations from Supabase.
- * @param {string} userId - User identifier.
- */
 export async function fetchUserInvoices(userId = 'usr_101') {
+  if (!hasSupabaseConfig) {
+    return readStorage('finscan_invoices_data', []);
+  }
+
   const { data, error } = await supabase
     .from('invoices')
     .select('*')
@@ -70,11 +108,11 @@ export async function fetchUserInvoices(userId = 'usr_101') {
   return data;
 }
 
-/**
- * Fetches processed bank statements from Supabase.
- * @param {string} userId - User identifier.
- */
 export async function fetchUserBankStatements(userId = 'usr_101') {
+  if (!hasSupabaseConfig) {
+    return readStorage('finscan_bank_statements', []);
+  }
+
   const { data, error } = await supabase
     .from('bank_statements')
     .select('*')
@@ -89,11 +127,6 @@ export async function fetchUserBankStatements(userId = 'usr_101') {
   return data;
 }
 
-/**
- * Stores the double-entry rows returned by the document processor.
- * @param {Array} rows - Ledger rows from the n8n response.
- * @param {object} context - Source document metadata.
- */
 export async function insertLedgerEntries(rows, context = {}) {
   if (!Array.isArray(rows) || rows.length === 0) return [];
 
@@ -114,6 +147,13 @@ export async function insertLedgerEntries(rows, context = {}) {
     source_document_id: context.sourceDocumentId || null,
   }));
 
+  if (!hasSupabaseConfig) {
+    const storedEntries = readStorage('finscan_ledger_entries', []);
+    const nextEntries = [...storedEntries, ...entries];
+    writeStorage('finscan_ledger_entries', nextEntries);
+    return nextEntries;
+  }
+
   const { data, error } = await supabase.from('ledger_entries').insert(entries).select();
   if (error) {
     console.error('Error inserting ledger entries into Supabase:', error);
@@ -126,11 +166,11 @@ export async function insertLedgerEntries(rows, context = {}) {
   return data;
 }
 
-/**
- * Fetches persisted ledger entries for a user.
- * @param {string} userId - User identifier.
- */
 export async function fetchUserLedgerEntries(userId = 'usr_101') {
+  if (!hasSupabaseConfig) {
+    return readStorage('finscan_ledger_entries', []).filter((entry) => !userId || entry.user_id === userId);
+  }
+
   const { data, error } = await supabase
     .from('ledger_entries')
     .select('*')
