@@ -4,10 +4,6 @@ import HeroScene from '../components/landing/HeroScene';
 import './Landing.css';
 
 const NAV_LINKS = [
-  { id: 'home', label: 'Home' },
-  { id: 'features', label: 'Features' },
-  { id: 'pricing', label: 'Pricing' },
-  { id: 'about', label: 'About' },
 ];
 
 const FEATURES = [
@@ -130,45 +126,9 @@ export default function Landing({ onAccess, onSignUp }) {
             See every ledger, wallet, and risk signal in one cinematic command center. Finscan Agent
             turns raw markets and documents into decisions you can trust.
           </p>
-          <button type="button" className="access-btn" onClick={onAccess}>
-            Access
-          </button>
         </div>
       </section>
 
-      <section id="features" className="panel">
-        <h2>Features</h2>
-        <div className="card-grid">
-          {FEATURES.map((item) => (
-            <article key={item.title} className="glass-card">
-              <h3>{item.title}</h3>
-              <p>{item.body}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section id="pricing" className="panel">
-        <h2>Pricing</h2>
-        <div className="card-grid">
-          {PLANS.map((plan) => (
-            <article key={plan.name} className={`glass-card ${plan.featured ? 'featured' : ''}`}>
-              <h3>{plan.name}</h3>
-              <p className="price">{plan.price}</p>
-              <p>{plan.note}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section id="about" className="panel about">
-        <h2>About</h2>
-        <p>
-          Finscan Agent is a financial intelligence platform built for operators who need clarity
-          under pressure. We fuse document analysis, compliance monitoring, and market graphing into
-          a single dark-ops workspace — neon-sharp, audit-ready, and always on.
-        </p>
-      </section>
     </div>
   );
 }

@@ -5,7 +5,7 @@ import * as THREE from 'three';
 
 const NEON_WHITE = '#FFFFFF';
 const WARM_GOLD = '#F5C542';
-const SILVER = '#C7D2FE';
+const SILVER = '#34D399'; // Emerald green color instead of blue
 
 function Coin({ position, scale = 1, speed = 1, color = WARM_GOLD }) {
   const group = useRef();
@@ -225,17 +225,7 @@ function SceneContents() {
       <pointLight position={[-5, 3, -2]} intensity={28} color={SILVER} distance={18} />
       <pointLight position={[0, -2, 4]} intensity={16} color={NEON_WHITE} distance={14} />
       <group ref={camGroup}>
-        <NetworkGraph />
-        <NeonPlatforms />
         <Particles />
-        <Coin position={[-3.4, 1.4, 1.2]} scale={1.05} speed={0.9} />
-        <Coin position={[3.6, 0.7, 0.6]} scale={0.85} speed={1.2} color="#E8D48B" />
-        <Coin position={[-2.2, -0.6, 2.4]} scale={0.62} speed={1.4} />
-        <Coin position={[2.1, 2.1, -0.8]} scale={0.7} speed={0.8} color={SILVER} />
-        <Coin position={[0.8, -1.1, 2.1]} scale={0.55} speed={1.1} />
-        <Coin position={[-4.1, 0.2, -0.4]} scale={0.48} speed={1.5} />
-        <ChartRibbon offset={[-3.8, -0.2, -1.6]} color={NEON_WHITE} phase={0.4} />
-        <ChartRibbon offset={[3.4, 0.5, -2]} color={SILVER} phase={1.8} />
       </group>
     </>
   );
