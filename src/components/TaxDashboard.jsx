@@ -127,7 +127,19 @@ export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
     return source.map(invoiceData);
   }, [invoices, contextInvoices]);
   const normalizedStatements = useMemo(() => bankStatements.map(statementData), [bankStatements]);
-  const normalizedLedgerEntries = useMemo(() => ledgerEntries.map(ledgerEntryData), [ledgerEntries]);
+  const normalizedLedgerEntries = useMemo(() => {
+    if (ledgerEntries.length > 0) return ledgerEntries.map(ledgerEntryData);
+    const fallback = invoices.map((invoice) => ({
+      date: getValue(invoice, ['date', 'invoice_date', 'created_at']),
+      particulars: getValue(invoice, ['vendor_name', 'vendorName'], 'Missing'),
+      debit: null,
+      credit: numberValue(getValue(invoice, ['total_amount', 'totalAmount', 'net_payable_amount', 'netPayable'])) || null,
+      folio: getValue(invoice, ['invoice_number', 'invoiceNumber'], 'Missing'),
+      narrative: getValue(invoice, ['ledger_category', 'gl_ledger_category', 'category'], 'Missing'),
+      balance: null,
+    }));
+    return fallback;
+  }, [ledgerEntries, invoices]);
   const totals = normalizedInvoices.reduce((result, invoice) => ({
     taxable: result.taxable + invoice.taxable,
     gst: result.gst + invoice.gst,
