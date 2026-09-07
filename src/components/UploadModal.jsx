@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { insertLedgerEntries, uploadAndProcessDocument } from '../services/api';
+import { useFinGuard } from '../context/FinGuardContext';
 
 const ACCEPTED_FILE_TYPES = 'application/pdf';
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -194,6 +195,7 @@ const UploadModal = ({ onClose, onUploadSuccess, userId: authenticatedUserId }) 
   const [activeStage, setActiveStage] = useState(-1);
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState('');
+  const { addInvoice } = useFinGuard();
 
   useEffect(() => {
     if (authenticatedUserId) setUserId(authenticatedUserId);
@@ -262,15 +264,43 @@ const UploadModal = ({ onClose, onUploadSuccess, userId: authenticatedUserId }) 
       for (const file of selectedFiles) {
         const response = await uploadAndProcessDocument(file, userId.trim(), documentType);
         const responseSummary = getSummary(response);
-        await insertLedgerEntries(responseSummary.ledgerRows, {
-          userId: userId.trim(), documentType,
-          date: responseSummary.date, invoiceNumber: responseSummary.invoiceNumber, vendor: responseSummary.vendor,
-        });
         processedSummaries.push(responseSummary);
+
+        try {
+          await insertLedgerEntries(responseSummary.ledgerRows, {
+            userId: userId.trim(), documentType,
+            date: responseSummary.date, invoiceNumber: responseSummary.invoiceNumber, vendor: responseSummary.vendor,
+          });
+        } catch (ledgerError) {
+          console.warn('Ledger save failed; dashboard may need a manual refresh.', ledgerError);
+        }
       }
       setSummary(combineSummaries(processedSummaries));
       setActiveStage(PROCESSING_STAGES.length - 1);
-      onUploadSuccess?.(response);
+      const lastSummary = processedSummaries[processedSummaries.length - 1];
+      if (lastSummary) {
+        addInvoice({
+          invoiceNumber: lastSummary.invoiceNumber,
+          vendorName: lastSummary.vendor,
+          date: lastSummary.date,
+          category: lastSummary.ledgerCategory,
+          subtotal: lastSummary.subtotal,
+          gstAmount: lastSummary.gstAmount,
+          totalAmount: lastSummary.totalAmount,
+          riskLevel: lastSummary.finalStatus === 'MISMATCH' ? 'HIGH' : 'LOW',
+          taxVerification: lastSummary.balanceCheck || 'Processed by FinScan AI',
+          aiSummary: lastSummary.rawText || 'Document processed successfully',
+          fileName: selectedFiles[selectedFiles.length - 1]?.name,
+          fileSize: `${(selectedFiles[selectedFiles.length - 1]?.size / 1024 / 1024).toFixed(2)} MB`,
+          lineItems: lastSummary.ledgerRows?.map((row) => ({
+            description: row.particulars || row.narrative || 'Ledger entry',
+            quantity: 1,
+            rate: Number(row.debit || row.credit || 0),
+            total: Number(row.debit || row.credit || 0),
+          })) || [],
+        });
+      }
+      onUploadSuccess?.(lastSummary || response);
     } catch (uploadError) {
       setError(uploadError?.message || 'The document could not be processed. Please try again.');
     } finally {

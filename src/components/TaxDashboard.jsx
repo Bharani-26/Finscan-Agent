@@ -12,6 +12,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { fetchUserBankStatements, fetchUserInvoices, fetchUserLedgerEntries } from '../services/api';
+import { useFinGuard } from '../context/FinGuardContext';
 
 const getValue = (record, keys, fallback = '') => {
   for (const key of keys) {
@@ -92,6 +93,7 @@ const Tab = ({ active, icon: Icon, children, onClick }) => (
 );
 
 export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
+  const { invoices: contextInvoices } = useFinGuard();
   const [activeTab, setActiveTab] = useState('tax');
   const [invoices, setInvoices] = useState([]);
   const [bankStatements, setBankStatements] = useState([]);
@@ -118,9 +120,12 @@ export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
     }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [userId]);
 
-  const normalizedInvoices = useMemo(() => invoices.map(invoiceData), [invoices]);
+  const normalizedInvoices = useMemo(() => {
+    const source = contextInvoices.length > 0 ? contextInvoices : invoices;
+    return source.map(invoiceData);
+  }, [invoices, contextInvoices]);
   const normalizedStatements = useMemo(() => bankStatements.map(statementData), [bankStatements]);
   const normalizedLedgerEntries = useMemo(() => ledgerEntries.map(ledgerEntryData), [ledgerEntries]);
   const totals = normalizedInvoices.reduce((result, invoice) => ({
