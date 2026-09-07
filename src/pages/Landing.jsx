@@ -103,7 +103,7 @@ export default function Landing({ onAccess, onSignUp }) {
             playsInline
             poster="/landing-poster.jpg"
           >
-            <source src="/Financial_charts_and_currency_sy…_202609071207.mp4" type="video/mp4" />
+            <source src="/landingpage.mp4" type="video/mp4" />
           </video>
           <div className="hero-scene">
             <HeroScene />
