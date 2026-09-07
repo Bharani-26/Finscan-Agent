@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useFinGuard } from '../context/FinGuardContext';
 import { uploadAndProcessDocument } from '../services/api';
+import { generateLedgerEntries, calculateRunningBalance } from '../services/ledgerGenerator';
 import {
   UploadCloud,
   FileCheck,
@@ -73,30 +74,94 @@ const parseLedgerTable = (text) => {
   });
 };
 
+const extractLedgerRows = (response, text, fallbackData, documentType) => {
+  const fromText = parseLedgerTable(text);
+  if (fromText.length > 0) return fromText;
+
+  const unwrapped = Array.isArray(response) ? response[0] : response;
+  const sources = [unwrapped, unwrapped?.data, unwrapped?.result, unwrapped?.output, unwrapped?.json];
+  const found = sources.find((s) => Array.isArray(s?.ledger_entry) || Array.isArray(s?.ledgerEntry) || Array.isArray(s?.ledgerRows) || Array.isArray(s?.ledgerEntries) || Array.isArray(s?.ledger));
+  const rawArray = found?.ledger_entry || found?.ledgerEntry || found?.ledgerRows || found?.ledgerEntries || found?.ledger || [];
+  if (rawArray.length > 0) {
+    return rawArray.map((row) => ({
+      date: row.date || row.entry_date || row.Date || fallbackData.date || 'Missing',
+      particulars: row.particulars || row.Particulars || row.details || row.account || 'Missing',
+      debit: row.debit ?? row.Debit ?? '',
+      credit: row.credit ?? row.Credit ?? '',
+      folio: row.folio || row.Folio || row.reference || fallbackData.invoiceNumber || 'Missing',
+      narrative: row.narrative || row.description || row.Description || fallbackData.vendorName || 'Missing',
+      balance: row.balance ?? row.running_balance ?? row.runningBalance ?? row.Balance ?? '',
+    }));
+  }
+
+  // Fallback: generate standard double-entry records from invoice figures
+  try {
+    const synthesized = generateLedgerEntries({
+      invoiceNumber: fallbackData.invoiceNumber || 'INV-TEMP',
+      vendorName: fallbackData.vendorName || 'Vendor',
+      date: fallbackData.date,
+      category: fallbackData.accountName || 'Expense',
+      subtotal: fallbackData.subtotal || fallbackData.taxableAmount || 0,
+      gstAmount: fallbackData.gstAmount || 0,
+      totalAmount: fallbackData.totalAmount || fallbackData.netPayable || 0,
+    }, documentType);
+    return calculateRunningBalance(synthesized).map(row => ({
+      date: row.date,
+      particulars: row.particulars,
+      debit: row.debit ? String(row.debit) : '',
+      credit: row.credit ? String(row.credit) : '',
+      folio: row.folio,
+      narrative: row.narrative,
+      balance: row.running_balance !== null && row.running_balance !== undefined ? String(row.running_balance) : '',
+    }));
+  } catch {
+    return [];
+  }
+};
+
 const normalizeBatchResult = (response, file, documentType = 'document') => {
   const text = responseText(response);
-  const ledgerRows = parseLedgerTable(text);
-  const firstLedgerRow = ledgerRows[0] || {};
+  const parsedTableRows = parseLedgerTable(text);
+  const firstLedgerRow = parsedTableRows[0] || {};
   const firstDebit = amountValue(firstLedgerRow.debit);
   const firstCredit = amountValue(firstLedgerRow.credit);
   const transactionTypeFallback = firstDebit > 0 ? 'Payment' : firstCredit > 0 ? 'Receipt' : 'Unknown';
+
+  const invoiceNumber = responseValue(response, ['invoice_number', 'invoiceNumber'], textValue(text, 'Invoice Number'));
+  const vendorName = responseValue(response, ['vendor_customer', 'vendor', 'vendor_name', 'vendorName'], textValue(text, 'Vendor Name|Vendor|Customer'));
+  const date = responseValue(response, ['date', 'invoice_date', 'invoiceDate'], textValue(text, 'Date') !== 'Missing' ? textValue(text, 'Date') : firstLedgerRow.date);
+  const subtotal = amountValue(responseValue(response, ['subtotal', 'taxable_amount', 'taxableAmount'], textAmount(text, 'Taxable Value|Subtotal')));
+  const gstAmount = amountValue(responseValue(response, ['calculated_gst_amount', 'gst_amount', 'gstAmount'], textAmount(text, 'GST|GST Amount')));
+  const totalAmount = amountValue(responseValue(response, ['total_amount', 'totalAmount', 'net_payable_amount', 'netPayable'], textAmount(text, 'Invoice Amount|Total Amount|Net Payable Amount')));
+  const accountName = responseValue(response, ['account_name', 'accountName', 'ledger_name'], textValue(text, 'Account/Ledger Name|Account') !== 'Missing' ? textValue(text, 'Account/Ledger Name|Account') : firstLedgerRow.particulars);
+
+  const ledgerRows = extractLedgerRows(response, text, {
+    invoiceNumber,
+    vendorName,
+    date,
+    subtotal,
+    gstAmount,
+    totalAmount,
+    accountName,
+  }, documentType);
+
   return ({
   ...(Array.isArray(response) ? response[0] : response),
   fileName: file.name,
   processedDocumentType: documentType,
   rawText: text,
-  invoiceNumber: responseValue(response, ['invoice_number', 'invoiceNumber'], textValue(text, 'Invoice Number')),
-  vendorName: responseValue(response, ['vendor_customer', 'vendor', 'vendor_name', 'vendorName'], textValue(text, 'Vendor Name|Vendor|Customer')),
-  date: responseValue(response, ['date', 'invoice_date', 'invoiceDate'], textValue(text, 'Date') !== 'Missing' ? textValue(text, 'Date') : firstLedgerRow.date),
-  subtotal: amountValue(responseValue(response, ['subtotal', 'taxable_amount', 'taxableAmount'], textAmount(text, 'Taxable Value|Subtotal'))),
-  gstAmount: amountValue(responseValue(response, ['calculated_gst_amount', 'gst_amount', 'gstAmount'], textAmount(text, 'GST|GST Amount'))),
-  totalAmount: amountValue(responseValue(response, ['total_amount', 'totalAmount', 'net_payable_amount', 'netPayable'], textAmount(text, 'Invoice Amount|Total Amount|Net Payable Amount'))),
+  invoiceNumber,
+  vendorName,
+  date,
+  subtotal,
+  gstAmount,
+  totalAmount,
   entryId: responseValue(response, ['entry_id', 'entryId'], textValue(text, 'Entry ID')),
   transactionType: responseValue(response, ['transaction_type', 'transactionType'], textValue(text, 'Transaction Type') !== 'Missing' ? textValue(text, 'Transaction Type') : transactionTypeFallback),
   description: responseValue(response, ['description', 'narrative'], textValue(text, 'Description/Narration|Description|Narration') !== 'Missing' ? textValue(text, 'Description/Narration|Description|Narration') : firstLedgerRow.narrative),
   invoiceDate: responseValue(response, ['invoice_date', 'invoiceDate'], textValue(text, 'Invoice Date')),
   partyGstin: responseValue(response, ['party_gstin', 'partyGstin', 'gstin'], textValue(text, 'Party GSTIN|GSTIN')),
-  accountName: responseValue(response, ['account_name', 'accountName', 'ledger_name'], textValue(text, 'Account/Ledger Name|Account') !== 'Missing' ? textValue(text, 'Account/Ledger Name|Account') : firstLedgerRow.particulars),
+  accountName,
   taxableAmount: amountValue(responseValue(response, ['taxable_amount', 'taxableAmount'], textAmount(text, 'Taxable Amount|Taxable Value'))),
   debitAmount: responseValue(response, ['debit_amount', 'debitAmount'], textAmount(text, 'Debit Amount') || firstLedgerRow.debit),
   creditAmount: responseValue(response, ['credit_amount', 'creditAmount'], textAmount(text, 'Credit Amount') || firstLedgerRow.credit),
@@ -129,7 +194,7 @@ const textValue = (text, label) => {
 };
 
 const Upload = () => {
-  const { addInvoice, setActivePage } = useFinGuard();
+  const { user, addInvoice, addLedgerEntries, setActivePage, setActiveDashboardTab, showToast } = useFinGuard();
 
   // File Picker State
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -273,7 +338,8 @@ const Upload = () => {
         const relatedDocuments = selectedDocumentType === 'bank_statement'
           ? relatedDocumentsRef.current.join('\n\n')
           : '';
-        const response = await uploadAndProcessDocument(file, 'usr_101', selectedDocumentType, relatedDocuments);
+        const currentUserId = user?.id || 'usr_101';
+        const response = await uploadAndProcessDocument(file, currentUserId, selectedDocumentType, relatedDocuments);
         results.push(normalizeBatchResult(response, file, selectedDocumentType));
         const analyzedText = responseText(response);
         if (analyzedText) relatedDocumentsRef.current.push(`${documentType} (${file.name}):\n${analyzedText}`);
@@ -283,15 +349,30 @@ const Upload = () => {
         const combinedResults = [...completedResults, ...results];
         const combinedLedgerRows = combinedResults.flatMap((item) => item.ledgerRows || []);
         setCompletedResults(combinedResults);
-        setAnalysisResult({
+        
+        const finalResult = {
           ...results[results.length - 1],
           batchCount: combinedResults.length,
           batchResults: combinedResults,
           ledgerRows: combinedLedgerRows,
           documentType: 'combined_documents',
-        });
+        };
+        
+        setAnalysisResult(finalResult);
         setBackendError(null);
         setPanelState('success');
+
+        // Auto-save to dashboard
+        addInvoice(finalResult);
+        if (combinedLedgerRows && combinedLedgerRows.length > 0 && addLedgerEntries) {
+          addLedgerEntries(combinedLedgerRows, {
+            userId: user?.id || 'usr_101',
+            documentType: finalResult.documentType || 'combined_documents',
+            date: finalResult.date,
+            invoiceNumber: finalResult.invoiceNumber,
+            vendor: finalResult.vendorName,
+          });
+        }
       }
     } catch (error) {
       setAnalysisResult(null);
@@ -303,7 +384,31 @@ const Upload = () => {
   // Save to Dashboard
   const handleSaveToDashboard = () => {
     if (analysisResult) {
+      // 1. Add invoice (which also auto-saves ledger entries if available)
       addInvoice(analysisResult);
+
+      // 2. Explicitly persist ledger entries to ensure they appear in the Ledger entries tab
+      if (analysisResult.ledgerRows && analysisResult.ledgerRows.length > 0) {
+        if (addLedgerEntries) {
+          addLedgerEntries(analysisResult.ledgerRows, {
+            userId: user?.id || 'usr_101',
+            documentType: analysisResult.documentType || 'combined_documents',
+            date: analysisResult.date,
+            invoiceNumber: analysisResult.invoiceNumber,
+            vendor: analysisResult.vendorName,
+          });
+        }
+      }
+
+      // 3. Set the active dashboard tab to 'ledger' so the user is taken directly to their ledger entries
+      if (setActiveDashboardTab) {
+        setActiveDashboardTab('ledger');
+      }
+
+      if (showToast) {
+        showToast('Saved document and ledger entries to Dashboard!', 'success');
+      }
+
       setActivePage('dashboard');
     }
   };
@@ -382,16 +487,6 @@ const Upload = () => {
                   ))}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="btn btn-secondary"
-                  style={{ width: '100%', marginBottom: '1rem', borderColor: 'var(--border-emerald)', color: 'var(--emerald-400)', background: 'rgba(16, 185, 129, 0.08)' }}
-                >
-                  <UploadCloud size={16} />
-                  Analyze three documents together
-                </button>
-
                 {/* Drag & Drop Area */}
                 <div
                   onDragOver={handleDragOver}
@@ -453,6 +548,16 @@ const Upload = () => {
                     </div>
                   )}
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="btn btn-secondary"
+                  style={{ width: '100%', marginBottom: '1rem', borderColor: 'var(--border-emerald)', color: 'var(--emerald-400)', background: 'rgba(16, 185, 129, 0.08)' }}
+                >
+                  <UploadCloud size={16} />
+                  Analyze three documents together
+                </button>
 
                 {/* Inline Validation Error */}
                 {validationError && (
@@ -622,9 +727,6 @@ const Upload = () => {
                 </div>
                 <RiskBadge riskLevel={analysisResult.riskLevel} />
               </div>
-              <p style={{ marginBottom: '1.25rem', color: 'var(--text-muted)', fontSize: '0.78rem', lineHeight: 1.4 }}>
-                Indicative results only — consult a qualified professional before filing or making financial decisions
-              </p>
 
               {analysisResult.batchResults?.length > 0 && (
                 <div style={{ marginBottom: '1.25rem', padding: '1rem', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', background: 'rgba(15, 23, 42, 0.55)' }}>

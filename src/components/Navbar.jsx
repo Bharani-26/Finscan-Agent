@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useFinGuard } from '../context/FinGuardContext';
+import logo from '../assets/logo.png';
 import { 
   Shield, 
   LayoutDashboard, 
@@ -35,8 +36,8 @@ const Navbar = () => {
       {/* Desktop Sidebar Nav */}
       <aside className="desktop-sidebar">
         <div className="sidebar-brand" style={{ cursor: 'pointer' }} onClick={() => handleNavClick('dashboard')}>
-          <div className="logo-badge">
-            <Shield size={24} className="text-emerald" />
+          <div className="logo-badge" style={{ background: 'none', border: 'none', padding: 0 }}>
+            <img src={logo} alt="Finscan Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
           <div>
             <h1 className="brand-title">Finscan</h1>
@@ -97,7 +98,7 @@ const Navbar = () => {
       {/* Mobile Top Navbar Header */}
       <header className="mobile-header">
         <div className="mobile-brand" onClick={() => handleNavClick('dashboard')} style={{ cursor: 'pointer' }}>
-          <Shield size={20} className="text-emerald" />
+          <img src={logo} alt="Finscan Logo" style={{ height: '24px', width: '24px', objectFit: 'contain' }} />
           <span className="brand-title" style={{ fontSize: '1.1rem' }}>Finscan</span>
         </div>
         <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="mobile-toggle-btn">

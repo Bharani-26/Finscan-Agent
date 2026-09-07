@@ -67,17 +67,18 @@ const MainApp = () => {
   return (
     <div className="app-container">
       {/* Persistent Disclaimer Banner across all authenticated screens */}
-      <DisclaimerBanner />
 
       {/* Main Layout with Sidebar + Content */}
       <div className="main-layout">
         <Navbar />
 
         <main className="content-area">
-          {activePage === 'dashboard' && <TaxDashboard key={dashboardRefreshKey} userId={user.id} onOpenUpload={() => setIsUploadModalOpen(true)} />}
-          {activePage === 'upload' && <Upload />}
-          {activePage === 'compliance' && <Compliance />}
-          {activePage === 'profile' && <Profile />}
+          <div key={activePage} className="page-transition">
+            {activePage === 'dashboard' && <TaxDashboard key={dashboardRefreshKey} userId={user.id} onOpenUpload={() => setIsUploadModalOpen(true)} />}
+            {activePage === 'upload' && <Upload />}
+            {activePage === 'compliance' && <Compliance />}
+            {activePage === 'profile' && <Profile />}
+          </div>
         </main>
       </div>
 

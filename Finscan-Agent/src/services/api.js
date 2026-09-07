@@ -5,9 +5,19 @@ import { analyzeDocument } from './mockApi';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const n8nWebhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL;
-export const hasSupabaseConfig = Boolean(supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('placeholder'));
-const useMockAuth = import.meta.env.DEV || import.meta.env.VITE_USE_MOCK_AUTH === 'true';
-const hasWebhookConfig = Boolean(import.meta.env.VITE_N8N_WEBHOOK_URL);
+const isValidHttpUrl = (value) => {
+  if (!value || value.toLowerCase().includes('placeholder')) return false;
+
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+export const hasSupabaseConfig = isValidHttpUrl(supabaseUrl) && Boolean(supabaseAnonKey);
+const hasWebhookConfig = isValidHttpUrl(n8nWebhookUrl);
 
 const readStorage = (key, fallback = []) => {
   if (typeof window === 'undefined' || !window.localStorage) return fallback;
@@ -130,25 +140,21 @@ const mockAuth = {
   }
 };
 
-const supabaseClient = hasSupabaseConfig ? createClient(supabaseUrl, supabaseAnonKey) : null;
-
-const localDataStub = {
-  from: () => ({
-    select: () => ({
-      eq: () => ({
-        order: async () => ({ data: [], error: null }),
+export const supabase = hasSupabaseConfig
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            order: async () => ({ data: [], error: null }),
+          }),
+        }),
+        insert: () => ({
+          select: async () => ({ data: [], error: null }),
+        }),
       }),
-    }),
-    insert: () => ({
-      select: async () => ({ data: [], error: null }),
-    }),
-  }),
-};
-
-export const supabase = {
-  auth: useMockAuth || !supabaseClient ? mockAuth : supabaseClient.auth,
-  from: (...args) => (supabaseClient ?? localDataStub).from(...args),
-};
+      auth: mockAuth,
+    };
 
 export async function uploadAndProcessDocument(file, userId = 'usr_101', documentType = 'invoice', relatedDocuments = '') {
   if (!hasWebhookConfig) {

@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { X, FileText, CheckCircle2, ShieldCheck, DollarSign, Calendar, Tag } from 'lucide-react';
 import RiskBadge from './RiskBadge';
+import AccountingDetailsModal from './AccountingDetailsModal';
 
 const InvoiceDetailModal = ({ invoice, onClose }) => {
+  const [showAccountingDetails, setShowAccountingDetails] = useState(false);
   if (!invoice) return null;
 
   return (
@@ -156,11 +158,26 @@ const InvoiceDetailModal = ({ invoice, onClose }) => {
         )}
 
         {/* Modal Actions */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+          <button 
+            onClick={() => setShowAccountingDetails(true)} 
+            className="btn btn-primary"
+            style={{ backgroundColor: 'var(--indigo-500)', color: 'white' }}
+          >
+            View Accounting Details
+          </button>
           <button onClick={onClose} className="btn btn-secondary">
             Close View
           </button>
         </div>
+
+        {/* Accounting Details Modal */}
+        <AccountingDetailsModal
+          isOpen={showAccountingDetails}
+          onClose={() => setShowAccountingDetails(false)}
+          invoice={invoice}
+          ledgerEntries={invoice.ledgerEntries || invoice.ledgerRows || []}
+        />
       </div>
     </div>
   );

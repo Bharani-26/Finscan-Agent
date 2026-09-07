@@ -4,10 +4,13 @@
  * Strict Validation & No-Fake-Data Guard
  */
 
+import { generateLedgerEntries, calculateRunningBalance, generateAccountingSummary } from './ledgerGenerator.js';
+
 const AUTH_KEY = 'finscan_user_session';
 const INVOICES_KEY = 'finscan_invoices_data';
 const ALERTS_KEY = 'finscan_compliance_alerts';
 const PROFILE_KEY = 'finscan_user_profile';
+const LEDGER_KEY = 'finscan_ledger_entries';
 
 // Initial Empty States (No pre-populated mock invoices or compliance alerts)
 const INITIAL_ALERTS = [];
@@ -290,9 +293,20 @@ export const analyzeDocument = async (file, onProgressUpdate) => {
     sourceDocument: fileName,
   };
 
+  // Generate ledger entries from the invoice
+  const ledgerEntries = generateLedgerEntries(analysisResult, 'debit_invoice');
+  const balancedEntries = calculateRunningBalance(ledgerEntries);
+  const accountingSummary = generateAccountingSummary(analysisResult);
+
+  const resultWithLedger = {
+    ...analysisResult,
+    ledgerEntries: balancedEntries,
+    accountingSummary: accountingSummary
+  };
+
   return {
     success: true,
-    data: analysisResult
+    data: resultWithLedger
   };
 };
 
@@ -391,9 +405,20 @@ export const analyzeManualEntry = async (formData, onProgressUpdate) => {
     sourceDocument: 'Manual Entry Submission',
   };
 
+  // Generate ledger entries from the manual entry
+  const ledgerEntries = generateLedgerEntries(analysisResult, 'debit_invoice');
+  const balancedEntries = calculateRunningBalance(ledgerEntries);
+  const accountingSummary = generateAccountingSummary(analysisResult);
+
+  const resultWithLedger = {
+    ...analysisResult,
+    ledgerEntries: balancedEntries,
+    accountingSummary: accountingSummary
+  };
+
   return {
     success: true,
-    data: analysisResult
+    data: resultWithLedger
   };
 };
 
@@ -442,7 +467,51 @@ export const updateAlertStatusInStore = (alertId, newStatus) => {
   return updated;
 };
 
+export const getStoredLedgerEntries = () => {
+  const stored = localStorage.getItem(LEDGER_KEY);
+  if (!stored) {
+    return [];
+  }
+  try {
+    const list = JSON.parse(stored);
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveLedgerEntriesToStore = (rows, context = {}) => {
+  if (!Array.isArray(rows) || rows.length === 0) return getStoredLedgerEntries();
+  const current = getStoredLedgerEntries();
+  const nullable = (val) => (val === undefined || val === null || val === '' || val === 'Not available' || val === 'Missing' ? null : val);
+
+  const formattedRows = rows.map((row, idx) => ({
+    id: row.id || `led_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
+    user_id: context.userId || 'usr_101',
+    entry_date: nullable(row.date || row.entry_date || row.Date || context.date),
+    particulars: row.particulars || row.Particulars || row.details || row.account || 'Missing',
+    debit: row.debit ?? row.Debit ?? null,
+    credit: row.credit ?? row.Credit ?? null,
+    folio_reference: row.folio || row.Folio || row.reference || row.ref || context.invoiceNumber || 'Missing',
+    narrative: row.narrative || row.description || row.Description || row.Narrative || context.vendor || 'Missing',
+    running_balance: row.balance ?? row.running_balance ?? row.runningBalance ?? row.Balance ?? null,
+    document_type: context.documentType || null,
+    invoice_number: context.invoiceNumber || null,
+    vendor_name: context.vendor || null,
+    created_at: new Date().toISOString(),
+  }));
+
+  // Deduplicate against existing entries by particulars, folio_reference, and entry_date
+  const existingKeys = new Set(current.map(e => `${e.entry_date}-${e.particulars}-${e.folio_reference}-${e.debit}-${e.credit}`));
+  const newUnique = formattedRows.filter(e => !existingKeys.has(`${e.entry_date}-${e.particulars}-${e.folio_reference}-${e.debit}-${e.credit}`));
+
+  const updated = [...newUnique, ...current];
+  localStorage.setItem(LEDGER_KEY, JSON.stringify(updated));
+  return updated;
+};
+
 export const clearStoredMockData = () => {
   localStorage.removeItem(INVOICES_KEY);
   localStorage.removeItem(ALERTS_KEY);
+  localStorage.removeItem(LEDGER_KEY);
 };

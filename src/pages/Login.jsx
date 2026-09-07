@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useFinGuard } from '../context/FinGuardContext';
+import logo from '../assets/logo.png';
 import { Shield, Lock, Mail, User, Building2, ArrowRight, AlertCircle } from 'lucide-react';
 
 const Login = ({ startInRegister = false, onBack }) => {
@@ -90,17 +91,12 @@ const Login = ({ startInRegister = false, onBack }) => {
           <div style={{
             width: '56px',
             height: '56px',
-            borderRadius: '16px',
-            backgroundColor: 'rgba(16, 185, 129, 0.12)',
-            border: '1px solid var(--border-emerald)',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'var(--emerald-400)',
-            marginBottom: '1rem',
-            boxShadow: 'var(--shadow-emerald)'
+            marginBottom: '1rem'
           }}>
-            <Shield size={32} />
+            <img src={logo} alt="Finscan Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
           <h1 style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>
             Finscan

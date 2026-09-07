@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Menu, X, ScanLine } from 'lucide-react';
+import logo from '../assets/logo.png';
 import HeroScene from '../components/landing/HeroScene';
 import './Landing.css';
 
@@ -59,8 +60,8 @@ export default function Landing({ onAccess, onSignUp }) {
     <div className="landing">
       <header className={`landing-header ${scrolled ? 'is-scrolled' : ''}`}>
         <button type="button" className="brand" onClick={() => goTo('home')}>
-          <span className="brand-mark">
-            <ScanLine size={18} />
+          <span className="brand-mark" style={{ background: 'none', border: 'none', padding: 0 }}>
+            <img src={logo} alt="Finscan Logo" style={{ height: '24px', width: '24px', objectFit: 'contain' }} />
           </span>
           <span className="brand-name">Finscan Agent</span>
         </button>
@@ -74,8 +75,8 @@ export default function Landing({ onAccess, onSignUp }) {
         </nav>
 
         <div className="header-actions">
-          <button type="button" className="signup-btn" onClick={onSignUp}>
-            Sign Up
+          <button type="button" className="signup-btn" onClick={onAccess}>
+            Sign In
           </button>
           <button
             type="button"
@@ -95,8 +96,8 @@ export default function Landing({ onAccess, onSignUp }) {
               {link.label}
             </button>
           ))}
-          <button type="button" className="signup-btn" onClick={onSignUp}>
-            Sign Up
+          <button type="button" className="signup-btn" onClick={onAccess}>
+            Sign In
           </button>
         </div>
       )}
