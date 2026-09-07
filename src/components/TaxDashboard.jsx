@@ -206,8 +206,98 @@ const TableShell = ({ title, subtitle, count, children }) => (
   </section>
 );
 
-const LedgerTable = ({ entries }) => <TableShell title="Ledger journal entries" subtitle="Persisted double-entry records ready for accounting review" count={entries.length}>{entries.length === 0 ? <div className="p-12 text-center text-sm text-slate-500">No ledger entries found. Upload a processed document to create one.</div> : <table className="w-full min-w-[1100px] text-left text-sm"><thead className="bg-slate-950/60 text-[11px] uppercase tracking-wider text-slate-500"><tr>{['Date', 'Particulars / Details', 'Debit', 'Credit', 'Folio / Reference', 'Description / Narrative', 'Running Balance'].map((label) => <th key={label} className="px-5 py-3 font-semibold">{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-800/80">{entries.map((entry, index) => <tr key={`${entry.particulars}-${index}`} className="transition hover:bg-white/[0.025]"><td className="whitespace-nowrap px-5 py-4 text-slate-500">{dateLabel(entry.date)}</td><td className="px-5 py-4 font-medium text-slate-200">{entry.particulars}</td><td className="whitespace-nowrap px-5 py-4 font-mono text-cyan-300">{ledgerMoney(entry.debit)}</td><td className="whitespace-nowrap px-5 py-4 font-mono text-amber-300">{ledgerMoney(entry.credit)}</td><td className="whitespace-nowrap px-5 py-4 text-slate-400">{entry.folio}</td><td className="min-w-56 px-5 py-4 text-slate-300">{entry.narrative}</td><td className="whitespace-nowrap px-5 py-4 font-mono font-semibold text-white">{ledgerMoney(entry.balance)}</td></tr>)}</tbody></table>}</TableShell>;
+const LedgerTable = ({ entries }) => (
+  <TableShell title="Ledger journal entries" subtitle="Persisted double-entry records ready for accounting review" count={entries.length}>
+    {entries.length === 0 ? (
+      <div className="p-12 text-center text-sm text-slate-500">No ledger entries found. Upload a processed document to create one.</div>
+    ) : (
+      <table className="w-full min-w-[1100px] text-left text-sm">
+        <thead className="bg-slate-950/60 text-[11px] uppercase tracking-wider text-slate-500">
+          <tr>
+            {['Date', 'Particulars / Details', 'Debit', 'Credit', 'Folio / Reference', 'Description / Narrative', 'Running Balance'].map((label) => (
+              <th key={label} className="px-5 py-3 font-semibold">{label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-800/80">
+          {entries.map((entry, index) => (
+            <tr key={`${entry.particulars}-${entry.folio}-${index}`} className="transition hover:bg-white/[0.025]">
+              <td className="whitespace-nowrap px-5 py-4 text-slate-500">{dateLabel(entry.date)}</td>
+              <td className="px-5 py-4 font-medium text-slate-200">{entry.particulars}</td>
+              <td className="whitespace-nowrap px-5 py-4 font-mono text-cyan-300">{ledgerMoney(entry.debit)}</td>
+              <td className="whitespace-nowrap px-5 py-4 font-mono text-amber-300">{ledgerMoney(entry.credit)}</td>
+              <td className="whitespace-nowrap px-5 py-4 text-slate-400">{entry.folio}</td>
+              <td className="min-w-56 px-5 py-4 text-slate-300">{entry.narrative}</td>
+              <td className="whitespace-nowrap px-5 py-4 font-mono font-semibold text-white">{ledgerMoney(entry.balance)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )}
+  </TableShell>
+);
 
-const TaxTable = ({ invoices, totals }) => <TableShell title="Tax position" subtitle={`GST ${money(totals.gst)} / TDS ${money(totals.tds)} across processed invoices`} count={invoices.length}><table className="w-full min-w-[700px] text-left text-sm"><thead className="bg-slate-950/60 text-[11px] uppercase tracking-wider text-slate-500"><tr>{['Document', 'Taxable value', 'GST claimable', 'TDS deducted', 'Net liability'].map((label) => <th key={label} className="px-5 py-3 font-semibold">{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-800/80">{invoices.map((invoice, index) => <tr key={invoice.number + index} className="hover:bg-white/[0.025]"><td className="px-5 py-4"><p className="font-mono font-semibold text-indigo-300">{invoice.number}</p><p className="mt-1 text-xs text-slate-500">{invoice.vendor}</p></td><td className="px-5 py-4 font-mono text-slate-300">{money(invoice.taxable)}</td><td className="px-5 py-4 font-mono text-emerald-300">{money(invoice.gst)}</td><td className="px-5 py-4 font-mono text-amber-300">{money(invoice.tds)}</td><td className="px-5 py-4 font-mono font-semibold text-white">{money(invoice.gst - invoice.tds)}</td></tr>)}</tbody></table></TableShell>;
+const TaxTable = ({ invoices, totals }) => (
+  <TableShell title="Tax position" subtitle={`GST ${money(totals.gst)} / TDS ${money(totals.tds)} across processed invoices`} count={invoices.length}>
+    <table className="w-full min-w-[700px] text-left text-sm">
+      <thead className="bg-slate-950/60 text-[11px] uppercase tracking-wider text-slate-500">
+        <tr>
+          {['Document', 'Taxable value', 'GST claimable', 'TDS deducted', 'Net liability'].map((label) => (
+            <th key={label} className="px-5 py-3 font-semibold">{label}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-slate-800/80">
+        {invoices.map((invoice, index) => (
+          <tr key={invoice.number + index} className="hover:bg-white/[0.025]">
+            <td className="px-5 py-4">
+              <p className="font-mono font-semibold text-indigo-300">{invoice.number}</p>
+              <p className="mt-1 text-xs text-slate-500">{invoice.vendor}</p>
+            </td>
+            <td className="px-5 py-4 font-mono text-slate-300">{money(invoice.taxable)}</td>
+            <td className="px-5 py-4 font-mono text-emerald-300">{money(invoice.gst)}</td>
+            <td className="px-5 py-4 font-mono text-amber-300">{money(invoice.tds)}</td>
+            <td className="px-5 py-4 font-mono font-semibold text-white">{money(invoice.gst - invoice.tds)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </TableShell>
+);
 
-const BankTable = ({ statements }) => <TableShell title="Bank reconciliation" subtitle="Statement activity mapped to your ledger categories" count={statements.length}>{statements.length === 0 ? <div className="p-12 text-center text-sm text-slate-500">No bank statement transactions found.</div> : <table className="w-full min-w-[700px] text-left text-sm"><thead className="bg-slate-950/60 text-[11px] uppercase tracking-wider text-slate-500"><tr>{['Date', 'Description', 'Suggested category', 'Direction', 'Amount'].map((label) => <th key={label} className="px-5 py-3 font-semibold">{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-800/80">{statements.map((statement, index) => { const credit = statement.type.includes('credit'); return <tr key={statement.description + index} className="hover:bg-white/[0.025]"><td className="px-5 py-4 text-slate-500">{dateLabel(statement.date)}</td><td className="px-5 py-4 font-medium text-slate-200">{statement.description}</td><td className="px-5 py-4 text-slate-400">{statement.category}</td><td className="px-5 py-4"><span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold ${credit ? 'bg-emerald-400/10 text-emerald-300' : 'bg-rose-400/10 text-rose-300'}`}>{credit ? <ArrowDownLeft size={13} /> : <ArrowUpRight size={13} />}{credit ? 'Credit' : 'Debit'}</span></td><td className="px-5 py-4 font-mono font-semibold text-white">{money(statement.amount)}</td></tr>; })}</tbody></table>}</TableShell>;
+const BankTable = ({ statements }) => (
+  <TableShell title="Bank reconciliation" subtitle="Statement activity mapped to your ledger categories" count={statements.length}>
+    {statements.length === 0 ? (
+      <div className="p-12 text-center text-sm text-slate-500">No bank statement transactions found.</div>
+    ) : (
+      <table className="w-full min-w-[700px] text-left text-sm">
+        <thead className="bg-slate-950/60 text-[11px] uppercase tracking-wider text-slate-500">
+          <tr>
+            {['Date', 'Description', 'Suggested category', 'Direction', 'Amount'].map((label) => (
+              <th key={label} className="px-5 py-3 font-semibold">{label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-800/80">
+          {statements.map((statement, index) => {
+            const credit = statement.type.includes('credit');
+            return (
+              <tr key={statement.description + index} className="hover:bg-white/[0.025]">
+                <td className="px-5 py-4 text-slate-500">{dateLabel(statement.date)}</td>
+                <td className="px-5 py-4 font-medium text-slate-200">{statement.description}</td>
+                <td className="px-5 py-4 text-slate-400">{statement.category}</td>
+                <td className="px-5 py-4">
+                  <span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold ${credit ? 'bg-emerald-400/10 text-emerald-300' : 'bg-rose-400/10 text-rose-300'}`}>
+                    {credit ? <ArrowDownLeft size={13} /> : <ArrowUpRight size={13} />}
+                    {credit ? 'Credit' : 'Debit'}
+                  </span>
+                </td>
+                <td className="px-5 py-4 font-mono font-semibold text-white">{money(statement.amount)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    )}
+  </TableShell>
+);
