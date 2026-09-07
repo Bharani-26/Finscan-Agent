@@ -214,7 +214,9 @@ export const analyzeDocument = async (file, onProgressUpdate) => {
 
   const randomNum = Math.floor(1000 + Math.random() * 9000);
   const invNumber = `INV-2026-${randomNum}`;
-  
+  const entryNumber = `LED-2026-${randomNum}`;
+  const refNumber = `BNK-2026-${randomNum}`;
+
   let vendor = 'Apex Tech Solutions';
   if (lowerName.includes('aws') || lowerName.includes('amazon')) vendor = 'Amazon Web Services';
   else if (lowerName.includes('google')) vendor = 'Google Workspace Cloud';
@@ -228,6 +230,15 @@ export const analyzeDocument = async (file, onProgressUpdate) => {
   const category = categories[Math.floor(Math.random() * categories.length)];
   const riskLevel = isHighRisk ? 'HIGH' : isMediumRisk ? 'MEDIUM' : 'LOW';
   const dateStr = new Date().toISOString().split('T')[0];
+  const paymentDateStr = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+  const gstRate = 10;
+  const cgst = Math.round((gstAmount / 2) * 100) / 100;
+  const sgst = Math.round((gstAmount / 2) * 100) / 100;
+  const igst = 0;
+  const tdsAmount = 0;
+  const partyGstin = `29ABCDE${Math.floor(10000 + Math.random() * 90000)}1Z1`;
+  const isCreditNote = lowerName.includes('credit');
 
   const analysisResult = {
     id: invNumber,
@@ -235,14 +246,23 @@ export const analyzeDocument = async (file, onProgressUpdate) => {
     vendorName: vendor,
     date: dateStr,
     subtotal: subtotal,
+    taxableAmount: subtotal,
     gstAmount: gstAmount,
+    gstRate: gstRate,
+    cgst: cgst,
+    sgst: sgst,
+    igst: igst,
+    tdsSection: 'Not Applicable',
+    tdsRate: 'Not Applicable',
+    tdsAmount: tdsAmount,
     totalAmount: totalAmount,
+    netPayable: totalAmount,
     category: category,
     riskLevel: riskLevel,
     fileName: fileName,
     fileSize: `${(file.size / 1024).toFixed(1)} KB`,
-    taxVerification: isHighRisk 
-      ? 'WARNING: ABN not registered for GST in public register' 
+    taxVerification: isHighRisk
+      ? 'WARNING: ABN not registered for GST in public register'
       : 'ABN 45 901 223 881 - Valid GST Tax Invoice',
     aiSummary: `AI parsed ${fileName}. Extracted 1 line item with 10% GST calculation. Vendor registration verified against tax database. Risk score evaluated as ${riskLevel}.`,
     lineItems: [
@@ -252,7 +272,22 @@ export const analyzeDocument = async (file, onProgressUpdate) => {
         rate: subtotal,
         total: subtotal
       }
-    ]
+    ],
+    entryId: entryNumber,
+    transactionType: isCreditNote ? 'Sales' : 'Purchase',
+    description: `AI parsed ${fileName}. Extracted 1 line item with 10% GST calculation.`,
+    invoiceDate: dateStr,
+    partyGstin: partyGstin,
+    accountName: category,
+    debitAmount: isCreditNote ? 0 : totalAmount,
+    creditAmount: isCreditNote ? totalAmount : 0,
+    bankReference: refNumber,
+    paymentDate: paymentDateStr,
+    debitAccount: isCreditNote ? 'Accounts Receivable' : 'Accounts Payable',
+    creditAccount: isCreditNote ? vendor : 'Bank Account',
+    reconciliationStatus: 'Matched',
+    complianceStatus: 'Compliant',
+    sourceDocument: fileName,
   };
 
   return {
@@ -286,7 +321,7 @@ export const analyzeManualEntry = async (formData, onProgressUpdate) => {
 
   const expectedGst = subNum * 0.1;
   const gstDiff = Math.abs(gstNum - expectedGst);
-  
+
   let riskLevel = 'LOW';
   let taxVerification = 'Valid Manual Invoice — GST matches standard 10% rate';
   let riskNote = 'No compliance issues detected.';
@@ -303,14 +338,28 @@ export const analyzeManualEntry = async (formData, onProgressUpdate) => {
     riskNote = 'High risk vendor classification.';
   }
 
+  const gstRate = 10;
+  const cgst = Math.round((gstNum / 2) * 100) / 100;
+  const sgst = Math.round((gstNum / 2) * 100) / 100;
+  const igst = 0;
+
   const analysisResult = {
     id: invoiceNumber,
     invoiceNumber: invoiceNumber,
     vendorName: vendorName,
     date: date,
     subtotal: subNum,
+    taxableAmount: subNum,
     gstAmount: gstNum,
+    gstRate: gstRate,
+    cgst: cgst,
+    sgst: sgst,
+    igst: igst,
+    tdsSection: 'Not Applicable',
+    tdsRate: 'Not Applicable',
+    tdsAmount: 0,
     totalAmount: totNum,
+    netPayable: totNum,
     category: category || 'General Expense',
     riskLevel: riskLevel,
     fileName: 'Manual Entry Submission',
@@ -319,12 +368,27 @@ export const analyzeManualEntry = async (formData, onProgressUpdate) => {
     aiSummary: `Manual entry audited for ${vendorName} (${invoiceNumber}). Subtotal: ₹${subNum.toFixed(2)}, GST: ₹${gstNum.toFixed(2)}, Total: ₹${totNum.toFixed(2)}. ${riskNote} ${notes ? `Notes: ${notes}` : ''}`,
     lineItems: [
       {
-        description: notes || `${category} manual line item`,
+        description: notes || `${category || 'General Expense'} manual line item`,
         quantity: 1,
         rate: subNum,
         total: subNum
       }
-    ]
+    ],
+    entryId: invoiceNumber,
+    transactionType: 'Purchase',
+    description: `Manual entry audited for ${vendorName} (${invoiceNumber}).`,
+    invoiceDate: date,
+    partyGstin: `29ABCDE${Math.floor(10000 + Math.random() * 90000)}1Z1`,
+    accountName: category || 'General Expense',
+    debitAmount: totNum,
+    creditAmount: 0,
+    bankReference: `BNK-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+    paymentDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    debitAccount: 'Accounts Payable',
+    creditAccount: 'Bank Account',
+    reconciliationStatus: 'Matched',
+    complianceStatus: 'Compliant',
+    sourceDocument: 'Manual Entry Submission',
   };
 
   return {
