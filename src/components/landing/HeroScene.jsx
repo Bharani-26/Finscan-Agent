@@ -219,7 +219,7 @@ function SceneContents() {
 
   return (
     <>
-      <fog attach="fog" args={['#040B1A', 8, 22]} />
+      <fog attach="fog" args={['#0f172a', 8, 22]} />
       <ambientLight intensity={0.25} />
       <pointLight position={[4, 6, 4]} intensity={40} color={NEON_WHITE} distance={22} />
       <pointLight position={[-5, 3, -2]} intensity={28} color={SILVER} distance={18} />
