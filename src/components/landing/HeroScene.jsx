@@ -3,11 +3,11 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Float, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 
-const NEON_BLUE = '#4F8CFF';
-const NEON_PURPLE = '#A855F7';
-const GOLD = '#F5C542';
+const NEON_WHITE = '#FFFFFF';
+const WARM_GOLD = '#F5C542';
+const SILVER = '#C7D2FE';
 
-function Coin({ position, scale = 1, speed = 1, color = GOLD }) {
+function Coin({ position, scale = 1, speed = 1, color = WARM_GOLD }) {
   const group = useRef();
 
   useFrame((_, delta) => {
@@ -32,8 +32,8 @@ function Coin({ position, scale = 1, speed = 1, color = GOLD }) {
         <mesh>
           <torusGeometry args={[0.55, 0.045, 12, 48]} />
           <meshStandardMaterial
-            color={NEON_BLUE}
-            emissive={NEON_BLUE}
+            color={NEON_WHITE}
+            emissive={NEON_WHITE}
             emissiveIntensity={1.4}
             metalness={0.4}
             roughness={0.2}
@@ -41,7 +41,7 @@ function Coin({ position, scale = 1, speed = 1, color = GOLD }) {
         </mesh>
         <mesh position={[0, 0.045, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[0.18, 0.32, 32]} />
-          <meshBasicMaterial color={NEON_PURPLE} transparent opacity={0.85} side={THREE.DoubleSide} />
+          <meshBasicMaterial color={SILVER} transparent opacity={0.85} side={THREE.DoubleSide} />
         </mesh>
       </group>
     </Float>
@@ -94,14 +94,14 @@ function NetworkGraph() {
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[positions, 3]} />
         </bufferGeometry>
-        <lineBasicMaterial color={NEON_BLUE} transparent opacity={0.28} />
+        <lineBasicMaterial color={NEON_WHITE} transparent opacity={0.28} />
       </lineSegments>
       {nodePositions.map((pos, i) => (
         <mesh key={i} position={pos}>
           <sphereGeometry args={[0.055 + (i % 3) * 0.02, 16, 16]} />
           <meshStandardMaterial
-            color={i % 2 === 0 ? NEON_BLUE : NEON_PURPLE}
-            emissive={i % 2 === 0 ? NEON_BLUE : NEON_PURPLE}
+            color={i % 2 === 0 ? NEON_WHITE : SILVER}
+            emissive={i % 2 === 0 ? NEON_WHITE : SILVER}
             emissiveIntensity={1.8}
             toneMapped={false}
           />
@@ -111,7 +111,7 @@ function NetworkGraph() {
   );
 }
 
-function ChartRibbon({ offset = [0, 0, 0], color = NEON_BLUE, phase = 0 }) {
+function ChartRibbon({ offset = [0, 0, 0], color = NEON_WHITE, phase = 0 }) {
   const lineRef = useRef();
   const points = useMemo(() => {
     const pts = [];
@@ -150,7 +150,7 @@ function ChartRibbon({ offset = [0, 0, 0], color = NEON_BLUE, phase = 0 }) {
           opacity={0.55}
           metalness={0.2}
           roughness={0.6}
-          emissive={NEON_PURPLE}
+          emissive={SILVER}
           emissiveIntensity={0.08}
         />
       </mesh>
@@ -171,7 +171,7 @@ function NeonPlatforms() {
             color="#05070d"
             metalness={0.5}
             roughness={0.4}
-            emissive={i % 2 ? NEON_PURPLE : NEON_BLUE}
+            emissive={i % 2 ? SILVER : NEON_WHITE}
             emissiveIntensity={0.45}
           />
         </mesh>
@@ -201,7 +201,7 @@ function Particles() {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
-      <pointsMaterial size={0.035} color={NEON_BLUE} transparent opacity={0.7} />
+      <pointsMaterial size={0.035} color={NEON_WHITE} transparent opacity={0.7} />
     </points>
   );
 }
@@ -221,9 +221,9 @@ function SceneContents() {
     <>
       <fog attach="fog" args={['#040B1A', 8, 22]} />
       <ambientLight intensity={0.25} />
-      <pointLight position={[4, 6, 4]} intensity={40} color={NEON_BLUE} distance={22} />
-      <pointLight position={[-5, 3, -2]} intensity={28} color={NEON_PURPLE} distance={18} />
-      <pointLight position={[0, -2, 4]} intensity={16} color="#60A5FA" distance={14} />
+      <pointLight position={[4, 6, 4]} intensity={40} color={NEON_WHITE} distance={22} />
+      <pointLight position={[-5, 3, -2]} intensity={28} color={SILVER} distance={18} />
+      <pointLight position={[0, -2, 4]} intensity={16} color={NEON_WHITE} distance={14} />
       <group ref={camGroup}>
         <NetworkGraph />
         <NeonPlatforms />
@@ -231,11 +231,11 @@ function SceneContents() {
         <Coin position={[-3.4, 1.4, 1.2]} scale={1.05} speed={0.9} />
         <Coin position={[3.6, 0.7, 0.6]} scale={0.85} speed={1.2} color="#E8D48B" />
         <Coin position={[-2.2, -0.6, 2.4]} scale={0.62} speed={1.4} />
-        <Coin position={[2.1, 2.1, -0.8]} scale={0.7} speed={0.8} color="#C4B5FD" />
+        <Coin position={[2.1, 2.1, -0.8]} scale={0.7} speed={0.8} color={SILVER} />
         <Coin position={[0.8, -1.1, 2.1]} scale={0.55} speed={1.1} />
         <Coin position={[-4.1, 0.2, -0.4]} scale={0.48} speed={1.5} />
-        <ChartRibbon offset={[-3.8, -0.2, -1.6]} color={NEON_BLUE} phase={0.4} />
-        <ChartRibbon offset={[3.4, 0.5, -2]} color={NEON_PURPLE} phase={1.8} />
+        <ChartRibbon offset={[-3.8, -0.2, -1.6]} color={NEON_WHITE} phase={0.4} />
+        <ChartRibbon offset={[3.4, 0.5, -2]} color={SILVER} phase={1.8} />
       </group>
     </>
   );
