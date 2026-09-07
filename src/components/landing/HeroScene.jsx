@@ -219,7 +219,6 @@ function SceneContents() {
 
   return (
     <>
-      <color attach="background" args={['#040B1A']} />
       <fog attach="fog" args={['#040B1A', 8, 22]} />
       <ambientLight intensity={0.25} />
       <pointLight position={[4, 6, 4]} intensity={40} color={NEON_BLUE} distance={22} />
@@ -244,7 +243,7 @@ function SceneContents() {
 
 export default function HeroScene() {
   return (
-    <Canvas dpr={[1, 1.6]} gl={{ antialias: true, alpha: false }} className="hero-canvas">
+    <Canvas dpr={[1, 1.6]} gl={{ antialias: true, alpha: true }} className="hero-canvas">
       <PerspectiveCamera makeDefault position={[0, 0.6, 9.2]} fov={48} />
       <SceneContents />
     </Canvas>
