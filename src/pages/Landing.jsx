@@ -94,8 +94,21 @@ export default function Landing({ onAccess, onSignUp }) {
       )}
 
       <section id="home" className="hero">
-        <div className="hero-scene">
-          <HeroScene />
+        <div className="hero-media">
+          <video
+            className="hero-video"
+            autoPlay
+            loop
+            muted
+            playsInline
+            poster="/landing-poster.jpg"
+          >
+            <source src="/landing-hero.mp4" type="video/mp4" />
+            <source src="/landing-hero.webm" type="video/webm" />
+          </video>
+          <div className="hero-scene">
+            <HeroScene />
+          </div>
         </div>
         <div className="hero-veil" />
         <div className="hero-copy">
