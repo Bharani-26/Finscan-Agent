@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FinGuardProvider, useFinGuard } from './context/FinGuardContext';
 import DisclaimerBanner from './components/DisclaimerBanner';
 import Navbar from './components/Navbar';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Upload from './pages/Upload';
@@ -16,6 +17,8 @@ const MainApp = () => {
   const { user, loadingAuth, activePage, setActivePage, toast } = useFinGuard();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0);
+  const [guestView, setGuestView] = useState('landing');
+  const [startInRegister, setStartInRegister] = useState(false);
 
   const handleUploadSuccess = () => {
     setDashboardRefreshKey((key) => key + 1);
@@ -38,7 +41,27 @@ const MainApp = () => {
   }
 
   if (!user) {
-    return <Login />;
+    if (guestView === 'landing') {
+      return (
+        <Landing
+          onAccess={() => {
+            setStartInRegister(false);
+            setGuestView('auth');
+          }}
+          onSignUp={() => {
+            setStartInRegister(true);
+            setGuestView('auth');
+          }}
+        />
+      );
+    }
+
+    return (
+      <Login
+        startInRegister={startInRegister}
+        onBack={() => setGuestView('landing')}
+      />
+    );
   }
 
   return (

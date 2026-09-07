@@ -10,12 +10,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
     "@supabase/supabase-js": "^2.57.0",
     "fingaurd": "file:",
     "lucide-react": "^1.41.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-phone-number-input": "^3.4.18"
+    "react-phone-number-input": "^3.4.18",
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "@rolldown/binding-win32-x64-msvc": "^1.2.7",

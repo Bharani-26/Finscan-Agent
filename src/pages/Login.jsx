@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useFinGuard } from '../context/FinGuardContext';
 import { Shield, Lock, Mail, User, Building2, ArrowRight, AlertCircle } from 'lucide-react';
 
-const Login = () => {
+const Login = ({ startInRegister = false, onBack }) => {
   const { login, register } = useFinGuard();
   
-  const [isRegisterMode, setIsRegisterMode] = useState(false);
+  const [isRegisterMode, setIsRegisterMode] = useState(startInRegister);
   const [name, setName] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [email, setEmail] = useState('');
@@ -67,6 +67,24 @@ const Login = () => {
       background: 'radial-gradient(circle at 50% 20%, rgba(16, 185, 129, 0.08) 0%, transparent 60%), var(--bg-dark)'
     }}>
       <div style={{ maxWidth: '440px', width: '100%' }}>
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              marginBottom: '1.25rem',
+              fontSize: '0.88rem',
+              fontWeight: 600
+            }}
+          >
+            ← Back to Finscan Agent
+          </button>
+        )}
+
         {/* Brand Header */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{
