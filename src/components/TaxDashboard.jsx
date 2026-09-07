@@ -161,6 +161,7 @@ export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
       <section className="dashboard-tabs rounded-2xl border border-slate-800/90 bg-slate-900/50 p-2 shadow-xl shadow-slate-950/20">
         <nav className="flex gap-1 overflow-x-auto" aria-label="Ledger views">
           <Tab active={activeTab === 'tax'} onClick={() => setActiveTab('tax')} icon={ReceiptIndianRupee}>Tax breakdown</Tab>
+          <Tab active={activeTab === 'ledger'} onClick={() => setActiveTab('ledger')} icon={FileText}>Ledger entries</Tab>
           <Tab active={activeTab === 'bank'} onClick={() => setActiveTab('bank')} icon={ArrowDownLeft}>Bank reconciliation</Tab>
         </nav>
       </section>

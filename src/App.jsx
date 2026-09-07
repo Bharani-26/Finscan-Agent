@@ -13,13 +13,14 @@ import UploadModal from './components/UploadModal';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const MainApp = () => {
-  const { user, loadingAuth, activePage, toast } = useFinGuard();
+  const { user, loadingAuth, activePage, setActivePage, toast } = useFinGuard();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0);
 
   const handleUploadSuccess = () => {
     setDashboardRefreshKey((key) => key + 1);
     setIsUploadModalOpen(false);
+    setActivePage('dashboard');
   };
 
   if (loadingAuth) {
