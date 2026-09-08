@@ -165,6 +165,20 @@ export const FinGuardProvider = ({ children }) => {
     return updatedLedger;
   };
 
+  const clearLedgerEntries = () => {
+    localStorage.removeItem('finscan_ledger_entries');
+    setLedgerEntries([]);
+  };
+
+  const clearAllData = () => {
+    localStorage.removeItem('finscan_ledger_entries');
+    localStorage.removeItem('finscan_invoices');
+    localStorage.removeItem('finscan_alerts');
+    setLedgerEntries([]);
+    setInvoices([]);
+    setAlerts([]);
+  };
+
   // Alert Handlers
   const markAlertAsReviewed = (alertId) => {
     const updated = updateAlertStatusInStore(alertId, 'reviewed');
@@ -192,6 +206,8 @@ export const FinGuardProvider = ({ children }) => {
       updateUserProfile,
       addInvoice,
       addLedgerEntries,
+      clearLedgerEntries,
+      clearAllData,
       markAlertAsReviewed
     }}>
       {children}

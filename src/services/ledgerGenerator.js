@@ -43,7 +43,7 @@ export const generateLedgerEntries = (invoice, documentType = 'debit_invoice') =
         particulars,
         debit: amount,
         credit: null,
-        folio: `INV-${invoiceNumber}`,
+        folio: invoiceNumber,
         narrative,
         running_balance: null
       });
@@ -75,7 +75,7 @@ export const generateLedgerEntries = (invoice, documentType = 'debit_invoice') =
         particulars: 'TDS Payable A/c',
         debit: null,
         credit: rawTds,
-        folio: `INV-${invoiceNumber}`,
+        folio: invoiceNumber,
         narrative: `TDS @ applicable rate on ${vendorName}`,
         running_balance: null
       });
@@ -88,17 +88,18 @@ export const generateLedgerEntries = (invoice, documentType = 'debit_invoice') =
       particulars: `${vendorName} A/c (Payable)`,
       debit: null,
       credit: vendorPayable,
-      folio: `INV-${invoiceNumber}`,
+      folio: invoiceNumber,
       narrative: `Payable to ${vendorName} - ${invoiceNumber}`,
       running_balance: null
     });
 
   } else if (documentType === 'credit_invoice') {
     /**
-     * Credit Note (Sales Return)
-     * Debit: Sales Returns A/c
-     * Debit: GST Reversal (CGST/SGST)
-     * Credit: Customer Receivable A/c
+     * Credit Note from Supplier (Purchase Return)
+     * Debit: Supplier Account
+     * Credit: Purchase Returns A/c
+     * Credit: CGST Input Tax Credit Reversal A/c
+     * Credit: SGST Input Tax Credit Reversal A/c
      */
 
     const rawSubtotal = parseFloat(subtotal) || 0;
@@ -107,81 +108,82 @@ export const generateLedgerEntries = (invoice, documentType = 'debit_invoice') =
     const isCGST = rawGst ? Math.round((rawGst / 2) * 100) / 100 : 0;
     const isSGST = rawGst ? Math.round((rawGst - isCGST) * 100) / 100 : 0;
 
-    // 1. Sales Returns Entry (debit to reduce revenue)
+    // 1. Supplier Account Debit
     entries.push({
       date: dateFormatted,
-      particulars: `Sales Returns/Customer Debit A/c`,
-      debit: rawSubtotal,
+      particulars: `${vendorName} A/c`,
+      debit: rawTotal,
       credit: null,
       folio: `CR-${invoiceNumber}`,
-      narrative: `Credit note return from ${vendorName} - ${invoiceNumber}`,
+      narrative: `Credit note received from ${vendorName} - ${invoiceNumber}`,
       running_balance: null
     });
 
-    // 2. GST Reversal - CGST
+    // 2. Purchase Returns Credit
+    entries.push({
+      date: dateFormatted,
+      particulars: `Purchase Returns / ${category || 'General'} A/c`,
+      debit: null,
+      credit: rawSubtotal,
+      folio: `CR-${invoiceNumber}`,
+      narrative: `Purchase return credit note - ${invoiceNumber}`,
+      running_balance: null
+    });
+
+    // 3. CGST Reversal Credit
     if (isCGST > 0) {
       entries.push({
         date: dateFormatted,
-        particulars: 'CGST Reversal A/c',
-        debit: isCGST,
-        credit: null,
+        particulars: 'CGST Input Tax Credit Reversal A/c',
+        debit: null,
+        credit: isCGST,
         folio: `CR-${invoiceNumber}`,
-        narrative: `CGST reversal on credit note`,
+        narrative: `CGST reversal on credit note from ${vendorName}`,
         running_balance: null
       });
     }
 
-    // 3. GST Reversal - SGST
+    // 4. SGST Reversal Credit
     if (isSGST > 0) {
       entries.push({
         date: dateFormatted,
-        particulars: 'SGST Reversal A/c',
-        debit: isSGST,
-        credit: null,
+        particulars: 'SGST Input Tax Credit Reversal A/c',
+        debit: null,
+        credit: isSGST,
         folio: `CR-${invoiceNumber}`,
-        narrative: `SGST reversal on credit note`,
+        narrative: `SGST reversal on credit note from ${vendorName}`,
         running_balance: null
       });
     }
-
-    // 4. Receivable Account Credit (full credit note amount)
-    entries.push({
-      date: dateFormatted,
-      particulars: `${vendorName} A/c (Receivable)`,
-      debit: null,
-      credit: rawTotal,
-      folio: `CR-${invoiceNumber}`,
-      narrative: `Receivable reversal from ${vendorName}`,
-      running_balance: null
-    });
 
   } else if (documentType === 'bank_statement') {
     /**
      * Bank Statement Entry
-     * For payments (debit in bank terms): Bank A/c Credit, Contra Account Debit
-     * For receipts (credit in bank terms): Bank A/c Debit, Contra Account Credit
+     * For payments: Contra Account Dr, Bank A/c Cr
+     * For receipts: Bank A/c Dr, Contra Account Cr
      */
 
     const isPayment = Number(invoice.debitAmount) > 0;
     const bankAmount = parseFloat(totalAmount) || 0;
+    const contraParty = vendorName || category || 'Unclassified';
 
-    // 1. Bank Account Entry
+    // 1. Contra Account Entry
+    entries.push({
+      date: dateFormatted,
+      particulars: `${contraParty} A/c`,
+      debit: isPayment ? bankAmount : null,
+      credit: isPayment ? null : bankAmount,
+      folio: invoiceNumber,
+      narrative: `Bank ${isPayment ? 'payment' : 'receipt'} - ${vendorName || 'Bank Statement'}`,
+      running_balance: null
+    });
+
+    // 2. Bank Account Entry
     entries.push({
       date: dateFormatted,
       particulars: 'Bank A/c',
       debit: isPayment ? null : bankAmount,
       credit: isPayment ? bankAmount : null,
-      folio: invoiceNumber,
-      narrative: `Bank transaction - ${vendorName || 'Bank Statement'}`,
-      running_balance: null
-    });
-
-    // 2. Corresponding Entry (contra account)
-    entries.push({
-      date: dateFormatted,
-      particulars: `${vendorName || category || 'Unclassified'} A/c`,
-      debit: isPayment ? bankAmount : null,
-      credit: isPayment ? null : bankAmount,
       folio: invoiceNumber,
       narrative: `Reconciliation entry - ${invoiceNumber}`,
       running_balance: null

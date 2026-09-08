@@ -1,0 +1,81 @@
+%PDF-1.4
+1 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+2 0 obj
+<<
+/Type /Pages
+/Kids [3 0 R]
+/Count 1
+>>
+endobj
+3 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/Resources <<
+/Font <<
+/F1 4 0 R
+>>
+>>
+/MediaBox [0 0 612 792]
+/Contents 5 0 R
+>>
+endobj
+4 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica-Bold
+>>
+endobj
+5 0 obj
+<<
+/Length 1200
+>>
+stream
+BT
+/F1 24 Tf
+50 700 Td
+(DEBIT INVOICE) Tj
+0 -40 Td
+/F1 14 Tf
+(Invoice Number: INV-DEB-002) Tj
+0 -30 Td
+(Vendor: Global Tech Solutions) Tj
+0 -30 Td
+(Date: 2026-09-07) Tj
+0 -30 Td
+(Taxable Amount: Rs. 75,000) Tj
+0 -30 Td
+(CGST @ 9%: Rs. 6,750) Tj
+0 -30 Td
+(SGST @ 9%: Rs. 6,750) Tj
+0 -30 Td
+(TDS u/s 194J @ 10%: Rs. 7,500) Tj
+0 -30 Td
+(Total Amount: Rs. 88,500) Tj
+0 -30 Td
+(Net Payable: Rs. 81,000) Tj
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000264 00000 n 
+0000000333 00000 n 
+trailer
+<<
+/Size 6
+/Root 1 0 R
+>>
+startxref
+493
+%%EOF

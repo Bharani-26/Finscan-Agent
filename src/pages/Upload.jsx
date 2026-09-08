@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useFinGuard } from '../context/FinGuardContext';
 import { uploadAndProcessDocument } from '../services/api';
 import { generateLedgerEntries, calculateRunningBalance } from '../services/ledgerGenerator';
+import { saveLedgerHistory } from '../services/mockApi';
 import {
   UploadCloud,
   FileCheck,
@@ -373,6 +374,21 @@ const Upload = () => {
             vendor: finalResult.vendorName,
           });
         }
+
+        // Save ledger history
+        if (combinedLedgerRows && combinedLedgerRows.length > 0) {
+          const totalDebits = combinedLedgerRows.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
+          const totalCredits = combinedLedgerRows.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
+          saveLedgerHistory({
+            documentName: selectedDocuments.map(d => d.file.name).join(', '),
+            documentType: finalResult.documentType || 'combined_documents',
+            entryCount: combinedLedgerRows.length,
+            totalDebits,
+            totalCredits,
+            status: finalResult.complianceStatus === 'REVIEW' ? 'review' : 'processed',
+            userId: user?.id || 'usr_101',
+          });
+        }
       }
     } catch (error) {
       setAnalysisResult(null);
@@ -400,7 +416,22 @@ const Upload = () => {
         }
       }
 
-      // 3. Set the active dashboard tab to 'ledger' so the user is taken directly to their ledger entries
+      // 3. Save ledger history
+      if (analysisResult.ledgerRows && analysisResult.ledgerRows.length > 0) {
+        const totalDebits = analysisResult.ledgerRows.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
+        const totalCredits = analysisResult.ledgerRows.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
+        saveLedgerHistory({
+          documentName: analysisResult.fileName || analysisResult.invoiceNumber,
+          documentType: analysisResult.documentType || 'combined_documents',
+          entryCount: analysisResult.ledgerRows.length,
+          totalDebits,
+          totalCredits,
+          status: analysisResult.complianceStatus === 'REVIEW' ? 'review' : 'processed',
+          userId: user?.id || 'usr_101',
+        });
+      }
+
+      // 4. Set the active dashboard tab to 'ledger' so the user is taken directly to their ledger entries
       if (setActiveDashboardTab) {
         setActiveDashboardTab('ledger');
       }
@@ -829,7 +860,6 @@ const Upload = () => {
                         <th style={{ textAlign: 'right' }}>Credit (₹)</th>
                         <th>Folio / Reference</th>
                         <th>Description / Narrative</th>
-                        <th style={{ textAlign: 'right' }}>Running Balance (₹)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -841,7 +871,6 @@ const Upload = () => {
                           <td className="mono" style={{ textAlign: 'right' }}>{row.credit || 'Missing'}</td>
                           <td>{row.folio || 'Missing'}</td>
                           <td>{row.narrative || 'Missing'}</td>
-                          <td className="mono" style={{ textAlign: 'right' }}>{row.balance || 'Missing'}</td>
                         </tr>
                       ))}
                     </tbody>

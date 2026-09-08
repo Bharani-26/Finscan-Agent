@@ -8,8 +8,11 @@ import {
   ReceiptIndianRupee,
   Sparkles,
   Download,
+  Trash2,
+  Clock,
 } from 'lucide-react';
 import { fetchUserBankStatements, fetchUserInvoices, fetchUserLedgerEntries } from '../services/api';
+import { getLedgerHistory, saveLedgerHistory } from '../services/mockApi';
 import { useFinGuard } from '../context/FinGuardContext';
 
 const getValue = (record, keys, fallback = '') => {
@@ -103,13 +106,15 @@ const Tab = ({ active, icon: Icon, children, onClick }) => (
 );
 
 export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
-  const { invoices: contextInvoices, ledgerEntries: contextLedgerEntries, activeDashboardTab, setActiveDashboardTab } = useFinGuard();
+  const { invoices: contextInvoices, ledgerEntries: contextLedgerEntries, activeDashboardTab, setActiveDashboardTab, clearAllData } = useFinGuard();
   const [activeTab, setActiveTab] = useState(activeDashboardTab || 'tax');
   const [invoices, setInvoices] = useState([]);
   const [bankStatements, setBankStatements] = useState([]);
   const [ledgerEntries, setLedgerEntries] = useState([]);
+  const [ledgerHistory, setLedgerHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [ledgerCleared, setLedgerCleared] = useState(false);
 
   useEffect(() => {
     if (activeDashboardTab) {
@@ -120,6 +125,7 @@ export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
   const loadData = async () => {
     setLoading(true);
     setError('');
+    setLedgerCleared(false);
     try {
       const [invoiceRows, bankRows, ledgerRows] = await Promise.all([
         fetchUserInvoices(userId),
@@ -129,6 +135,7 @@ export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
       setInvoices(Array.isArray(invoiceRows) ? invoiceRows : []);
       setBankStatements(Array.isArray(bankRows) ? bankRows : []);
       setLedgerEntries(Array.isArray(ledgerRows) ? ledgerRows : []);
+      setLedgerHistory(getLedgerHistory());
     } catch (loadError) {
       setError(loadError?.message || 'Could not load your accounting records.');
     } finally {
@@ -162,10 +169,6 @@ export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
       }
     }
 
-    if (combined.length > 0) {
-      return combined.map(ledgerEntryData);
-    }
-
     const sourceInvoices = contextInvoices.length > 0 ? contextInvoices : invoices;
     const embedded = sourceInvoices.flatMap((inv) => {
       const rows = inv.ledgerRows || inv.ledgerEntries || [];
@@ -176,8 +179,23 @@ export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
       }));
     });
 
-    if (embedded.length > 0) {
-      return embedded.map(ledgerEntryData);
+    const allEntries = [...combined];
+    for (const item of embedded) {
+      const itemDate = getValue(item, ['entry_date', 'date', 'created_at']);
+      const itemPart = getValue(item, ['particulars', 'details', 'account']);
+      const itemFolio = getValue(item, ['folio_reference', 'folio', 'reference']);
+      const exists = allEntries.some(c => 
+        getValue(c, ['entry_date', 'date', 'created_at']) === itemDate &&
+        getValue(c, ['particulars', 'details', 'account']) === itemPart &&
+        getValue(c, ['folio_reference', 'folio', 'reference']) === itemFolio
+      );
+      if (!exists) {
+        allEntries.push(item);
+      }
+    }
+
+    if (allEntries.length > 0) {
+      return allEntries.map(ledgerEntryData);
     }
 
     return sourceInvoices.map((invoice) => ({
@@ -234,6 +252,23 @@ export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
     }
   };
 
+  const clearLedger = async () => {
+    setLoading(true);
+    try {
+      clearAllData();
+      setInvoices([]);
+      setBankStatements([]);
+      setLedgerEntries([]);
+      setLedgerCleared(true);
+    } finally {
+      setLoading(false);
+    }
+    setTimeout(() => {
+      setActiveTab('ledger');
+      setActiveDashboardTab('ledger');
+    }, 0);
+  };
+
   return (
     <main className="dashboard-shell min-h-full overflow-hidden rounded-[28px] border border-slate-800/80 p-5 text-slate-100 shadow-2xl shadow-slate-950/30 sm:p-8">
       <header className="dashboard-hero mb-8">
@@ -258,6 +293,7 @@ export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
         <nav className="flex gap-1 overflow-x-auto" aria-label="Ledger views">
           <Tab active={activeTab === 'tax'} onClick={() => handleTabChange('tax')} icon={ReceiptIndianRupee}>Tax breakdown</Tab>
           <Tab active={activeTab === 'ledger'} onClick={() => handleTabChange('ledger')} icon={FileText}>Ledger entries</Tab>
+          <Tab active={activeTab === 'history'} onClick={() => handleTabChange('history')} icon={Clock}>Ledger history</Tab>
           <Tab active={activeTab === 'bank'} onClick={() => handleTabChange('bank')} icon={ArrowDownLeft}>Bank reconciliation</Tab>
         </nav>
       </section>
@@ -266,7 +302,21 @@ export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
       {loading ? (
         <div className="mt-5 flex min-h-64 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900/40 text-sm text-slate-400"><LoaderCircle size={19} className="mr-3 animate-spin text-indigo-400" /> Loading your records...</div>
       ) : activeTab === 'ledger' ? (
-        <LedgerTable entries={normalizedLedgerEntries} />
+        <div className="mt-5 space-y-4">
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={clearLedger}
+              className="inline-flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/20"
+            >
+              <Trash2 size={16} />
+              Clear ledger
+            </button>
+          </div>
+          <LedgerTable entries={ledgerCleared ? [] : normalizedLedgerEntries} />
+        </div>
+      ) : activeTab === 'history' ? (
+        <HistoryTable entries={ledgerHistory} />
       ) : activeTab === 'tax' ? (
         <TaxTable invoices={normalizedInvoices} totals={ledgerTaxTotals} />
       ) : (
@@ -301,11 +351,11 @@ const LedgerTable = ({ entries }) => {
   const handleDownload = () => {
     downloadCSV(
       'ledger_entries.csv',
-      ['Date', 'Particulars / Details', 'Debit', 'Credit', 'Folio / Reference', 'Description / Narrative', 'Running Balance'],
-      entries.map(e => [e.date, e.particulars, e.debit, e.credit, e.folio, e.narrative, e.balance])
+      ['Date', 'Particulars / Details', 'Debit', 'Credit', 'Folio / Reference', 'Description / Narrative'],
+      entries.map(e => [e.date, e.particulars, e.debit, e.credit, e.folio, e.narrative])
     );
   };
-  
+
   return (
     <TableShell title="Ledger journal entries" subtitle="Persisted double-entry records ready for accounting review" count={entries.length} onDownload={entries.length > 0 ? handleDownload : undefined}>
       {entries.length === 0 ? (
@@ -314,7 +364,7 @@ const LedgerTable = ({ entries }) => {
         <table className="w-full min-w-[1100px] text-left text-sm">
           <thead className="bg-slate-950/60 text-[11px] uppercase tracking-wider text-slate-500">
             <tr>
-              {['Date', 'Particulars / Details', 'Debit', 'Credit', 'Folio / Reference', 'Description / Narrative', 'Running Balance'].map((label) => (
+              {['Date', 'Particulars / Details', 'Debit', 'Credit', 'Folio / Reference', 'Description / Narrative'].map((label) => (
                 <th key={label} className="px-5 py-3 font-semibold">{label}</th>
               ))}
             </tr>
@@ -328,13 +378,61 @@ const LedgerTable = ({ entries }) => {
               <td className="whitespace-nowrap px-5 py-4 font-mono text-amber-300">{ledgerMoney(entry.credit)}</td>
               <td className="whitespace-nowrap px-5 py-4 text-slate-400">{entry.folio}</td>
               <td className="min-w-56 px-5 py-4 text-slate-300">{entry.narrative}</td>
-              <td className="whitespace-nowrap px-5 py-4 font-mono font-semibold text-white">{ledgerMoney(entry.balance)}</td>
             </tr>
           ))}
         </tbody>
       </table>
     )}
   </TableShell>
+  );
+};
+
+const HistoryTable = ({ entries }) => {
+  const handleDownload = () => {
+    downloadCSV(
+      'ledger_history.csv',
+      ['Date', 'Document', 'Type', 'Entries', 'Total Debits', 'Total Credits', 'Status'],
+      entries.map(e => [e.timestamp, e.documentName, e.documentType, e.entryCount, e.totalDebits, e.totalCredits, e.status])
+    );
+  };
+
+  return (
+    <TableShell title="Ledger upload history" subtitle="Previous document processing sessions for business reference" count={entries.length} onDownload={entries.length > 0 ? handleDownload : undefined}>
+      {entries.length === 0 ? (
+        <div className="p-12 text-center text-sm text-slate-500">No ledger history found. Upload and process documents to build history.</div>
+      ) : (
+        <table className="w-full min-w-[900px] text-left text-sm">
+          <thead className="bg-slate-950/60 text-[11px] uppercase tracking-wider text-slate-500">
+            <tr>
+              {['Date', 'Document', 'Type', 'Entries', 'Total Debits', 'Total Credits', 'Status'].map((label) => (
+                <th key={label} className="px-5 py-3 font-semibold">{label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800/80">
+            {entries.map((entry, index) => (
+              <tr key={`${entry.id}-${index}`} className="transition hover:bg-white/[0.025]">
+                <td className="whitespace-nowrap px-5 py-4 text-slate-500">{dateLabel(entry.timestamp)}</td>
+                <td className="px-5 py-4 font-medium text-slate-200">{entry.documentName}</td>
+                <td className="px-5 py-4 text-slate-400">{entry.documentType}</td>
+                <td className="px-5 py-4 font-mono text-slate-300">{entry.entryCount}</td>
+                <td className="px-5 py-4 font-mono text-cyan-300">{ledgerMoney(entry.totalDebits)}</td>
+                <td className="px-5 py-4 font-mono text-amber-300">{ledgerMoney(entry.totalCredits)}</td>
+                <td className="px-5 py-4">
+                  <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                    entry.status === 'processed' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' :
+                    entry.status === 'review' ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' :
+                    'border-red-500/30 bg-red-500/10 text-red-300'
+                  }`}>
+                    {entry.status}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </TableShell>
   );
 };
 
