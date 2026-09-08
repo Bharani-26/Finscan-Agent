@@ -27,7 +27,7 @@ const numberValue = (value) => {
 const money = (value) => new Intl.NumberFormat('en-IN', {
   style: 'currency',
   currency: 'INR',
-  maximumFractionDigits: 0,
+  maximumFractionDigits: 2,
 }).format(numberValue(value));
 
 const downloadCSV = (filename, headers, rows) => {

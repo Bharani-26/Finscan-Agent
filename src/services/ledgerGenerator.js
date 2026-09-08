@@ -19,10 +19,13 @@ export const generateLedgerEntries = (invoice, documentType = 'debit_invoice') =
     riskLevel
   } = invoice;
 
-  // Determine if GST is CGST+SGST (intra-state) or IGST (inter-state)
-  const isCGST = gstAmount ? gstAmount / 2 : 0; // Simplified: assume 50-50 split
-  const isSGST = gstAmount ? gstAmount / 2 : 0;
-  const isIGST = 0; // For inter-state, would be full gstAmount
+  const rawGst = parseFloat(gstAmount) || 0;
+  const rawSubtotal = parseFloat(subtotal) || 0;
+  const rawTotal = parseFloat(totalAmount) || rawSubtotal + rawGst;
+
+  const isCGST = rawGst ? Math.round((rawGst / 2) * 100) / 100 : 0;
+  const isSGST = rawGst ? Math.round((rawGst - isCGST) * 100) / 100 : 0;
+  const isIGST = 0;
 
   const dateFormatted = date || new Date().toISOString().split('T')[0];
 
@@ -33,77 +36,50 @@ export const generateLedgerEntries = (invoice, documentType = 'debit_invoice') =
      * Debit: Input Tax Credit (CGST/SGST/IGST)
      * Credit: Vendor Payable Account
      */
-    
+
+    const addDebit = (particulars, amount, narrative) => {
+      entries.push({
+        date: dateFormatted,
+        particulars,
+        debit: amount,
+        credit: null,
+        folio: `INV-${invoiceNumber}`,
+        narrative,
+        running_balance: null
+      });
+    };
+
     // 1. Expense Account Entry
-    entries.push({
-      date: dateFormatted,
-      particulars: `${category || 'Purchases'} A/c`,
-      debit: parseFloat(subtotal) || 0,
-      credit: null,
-      folio: `INV-${invoiceNumber}`,
-      narrative: `Purchase from ${vendorName} - ${invoiceNumber}`,
-      running_balance: null
-    });
+    addDebit(`${category || 'Purchases'} A/c`, rawSubtotal, `Purchase from ${vendorName} - ${invoiceNumber}`);
 
     // 2. CGST Entry (if applicable)
     if (isCGST > 0) {
-      entries.push({
-        date: dateFormatted,
-        particulars: 'CGST Input Tax Credit A/c',
-        debit: parseFloat(isCGST) || 0,
-        credit: null,
-        folio: `INV-${invoiceNumber}`,
-        narrative: `CGST @ 9% on ${vendorName} purchase`,
-        running_balance: null
-      });
+      addDebit('CGST Input Tax Credit A/c', isCGST, `CGST @ 9% on ${vendorName} purchase`);
     }
 
     // 3. SGST Entry (if applicable)
     if (isSGST > 0) {
-      entries.push({
-        date: dateFormatted,
-        particulars: 'SGST Input Tax Credit A/c',
-        debit: parseFloat(isSGST) || 0,
-        credit: null,
-        folio: `INV-${invoiceNumber}`,
-        narrative: `SGST @ 9% on ${vendorName} purchase`,
-        running_balance: null
-      });
+      addDebit('SGST Input Tax Credit A/c', isSGST, `SGST @ 9% on ${vendorName} purchase`);
     }
 
     // 4. IGST Entry (if applicable - inter-state)
     if (isIGST > 0) {
-      entries.push({
-        date: dateFormatted,
-        particulars: 'IGST Input Tax Credit A/c',
-        debit: parseFloat(isIGST) || 0,
-        credit: null,
-        folio: `INV-${invoiceNumber}`,
-        narrative: `IGST @ 18% on ${vendorName} purchase`,
-        running_balance: null
-      });
+      addDebit('IGST Input Tax Credit A/c', isIGST, `IGST @ 18% on ${vendorName} purchase`);
     }
 
     // 5. TDS Entry (if applicable)
-    if (tdsAmount > 0) {
-      entries.push({
-        date: dateFormatted,
-        particulars: 'TDS Payable A/c',
-        debit: parseFloat(tdsAmount) || 0,
-        credit: null,
-        folio: `INV-${invoiceNumber}`,
-        narrative: `TDS @ applicable rate on ${vendorName}`,
-        running_balance: null
-      });
+    const rawTds = parseFloat(tdsAmount) || 0;
+    if (rawTds > 0) {
+      addDebit('TDS Payable A/c', rawTds, `TDS @ applicable rate on ${vendorName}`);
     }
 
     // 6. Vendor Payable Entry (Credit side)
-    const creditAmount = parseFloat(totalAmount) || parseFloat(subtotal + (gstAmount || 0)) - (tdsAmount || 0);
+    const totalDebits = entries.reduce((sum, entry) => sum + (entry.debit || 0), 0);
     entries.push({
       date: dateFormatted,
       particulars: `${vendorName} A/c (Payable)`,
       debit: null,
-      credit: creditAmount,
+      credit: totalDebits,
       folio: `INV-${invoiceNumber}`,
       narrative: `Payable to ${vendorName} - ${invoiceNumber}`,
       running_balance: null
@@ -233,8 +209,9 @@ export const calculateRunningBalance = (entries) => {
 export const generateAccountingSummary = (invoice) => {
   const { invoiceNumber, vendorName, date, subtotal, gstAmount = 0, tdsAmount = 0, totalAmount } = invoice;
 
-  const cgst = gstAmount ? gstAmount / 2 : 0;
-  const sgst = gstAmount ? gstAmount / 2 : 0;
+  const rawGst = parseFloat(gstAmount) || 0;
+  const cgst = rawGst ? Math.round((rawGst / 2) * 100) / 100 : 0;
+  const sgst = rawGst ? Math.round((rawGst - cgst) * 100) / 100 : 0;
 
   return {
     documentType: invoice.documentType || 'invoice',
@@ -242,12 +219,12 @@ export const generateAccountingSummary = (invoice) => {
     vendorName: vendorName,
     date: date,
     taxableAmount: parseFloat(subtotal) || 0,
-    gstRate: gstAmount ? '18%' : '0%',
-    cgst: parseFloat(cgst) || 0,
-    sgst: parseFloat(sgst) || 0,
+    gstRate: rawGst ? '18%' : '0%',
+    cgst,
+    sgst,
     igst: 0,
     tdsSection: '194I', // Example section - would be dynamic
-    tdsRate: tdsAmount ? '2%' : '0%',
+    tdsRate: parseFloat(tdsAmount) ? '2%' : '0%',
     tdsAmount: parseFloat(tdsAmount) || 0,
     tdsBase: parseFloat(subtotal) || 0,
     netPayable: parseFloat(totalAmount) || 0,

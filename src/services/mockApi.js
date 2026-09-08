@@ -237,7 +237,7 @@ export const analyzeDocument = async (file, onProgressUpdate) => {
 
   const gstRate = 10;
   const cgst = Math.round((gstAmount / 2) * 100) / 100;
-  const sgst = Math.round((gstAmount / 2) * 100) / 100;
+  const sgst = Math.round((gstAmount - cgst) * 100) / 100;
   const igst = 0;
   const tdsAmount = 0;
   const partyGstin = `29ABCDE${Math.floor(10000 + Math.random() * 90000)}1Z1`;
@@ -354,7 +354,7 @@ export const analyzeManualEntry = async (formData, onProgressUpdate) => {
 
   const gstRate = 10;
   const cgst = Math.round((gstNum / 2) * 100) / 100;
-  const sgst = Math.round((gstNum / 2) * 100) / 100;
+  const sgst = Math.round((gstNum - cgst) * 100) / 100;
   const igst = 0;
 
   const analysisResult = {
