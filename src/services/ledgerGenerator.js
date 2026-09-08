@@ -67,19 +67,27 @@ export const generateLedgerEntries = (invoice, documentType = 'debit_invoice') =
       addDebit('IGST Input Tax Credit A/c', isIGST, `IGST @ 18% on ${vendorName} purchase`);
     }
 
-    // 5. TDS Entry (if applicable)
+    // 5. TDS Entry (if applicable) - shown as credit since TDS is a withheld liability
     const rawTds = parseFloat(tdsAmount) || 0;
     if (rawTds > 0) {
-      addDebit('TDS Payable A/c', rawTds, `TDS @ applicable rate on ${vendorName}`);
+      entries.push({
+        date: dateFormatted,
+        particulars: 'TDS Payable A/c',
+        debit: null,
+        credit: rawTds,
+        folio: `INV-${invoiceNumber}`,
+        narrative: `TDS @ applicable rate on ${vendorName}`,
+        running_balance: null
+      });
     }
 
-    // 6. Vendor Payable Entry (Credit side)
-    const totalDebits = entries.reduce((sum, entry) => sum + (entry.debit || 0), 0);
+    // 6. Vendor Payable Entry (Credit side) - net of TDS
+    const vendorPayable = Math.round((rawSubtotal + rawGst - rawTds) * 100) / 100;
     entries.push({
       date: dateFormatted,
       particulars: `${vendorName} A/c (Payable)`,
       debit: null,
-      credit: totalDebits,
+      credit: vendorPayable,
       folio: `INV-${invoiceNumber}`,
       narrative: `Payable to ${vendorName} - ${invoiceNumber}`,
       running_balance: null
@@ -88,16 +96,22 @@ export const generateLedgerEntries = (invoice, documentType = 'debit_invoice') =
   } else if (documentType === 'credit_invoice') {
     /**
      * Credit Note (Sales Return)
-     * Debit: Customer Receivable/Sales Returns A/c
-     * Debit: GST Reversal
-     * Credit: Revenue Account
+     * Debit: Sales Returns A/c
+     * Debit: GST Reversal (CGST/SGST)
+     * Credit: Customer Receivable A/c
      */
 
-    // 1. Sales Returns Entry
+    const rawSubtotal = parseFloat(subtotal) || 0;
+    const rawGst = parseFloat(gstAmount) || 0;
+    const rawTotal = parseFloat(totalAmount) || rawSubtotal + rawGst;
+    const isCGST = rawGst ? Math.round((rawGst / 2) * 100) / 100 : 0;
+    const isSGST = rawGst ? Math.round((rawGst - isCGST) * 100) / 100 : 0;
+
+    // 1. Sales Returns Entry (debit to reduce revenue)
     entries.push({
       date: dateFormatted,
       particulars: `Sales Returns/Customer Debit A/c`,
-      debit: parseFloat(subtotal) || 0,
+      debit: rawSubtotal,
       credit: null,
       folio: `CR-${invoiceNumber}`,
       narrative: `Credit note return from ${vendorName} - ${invoiceNumber}`,
@@ -109,7 +123,7 @@ export const generateLedgerEntries = (invoice, documentType = 'debit_invoice') =
       entries.push({
         date: dateFormatted,
         particulars: 'CGST Reversal A/c',
-        debit: parseFloat(isCGST) || 0,
+        debit: isCGST,
         credit: null,
         folio: `CR-${invoiceNumber}`,
         narrative: `CGST reversal on credit note`,
@@ -122,7 +136,7 @@ export const generateLedgerEntries = (invoice, documentType = 'debit_invoice') =
       entries.push({
         date: dateFormatted,
         particulars: 'SGST Reversal A/c',
-        debit: parseFloat(isSGST) || 0,
+        debit: isSGST,
         credit: null,
         folio: `CR-${invoiceNumber}`,
         narrative: `SGST reversal on credit note`,
@@ -130,24 +144,12 @@ export const generateLedgerEntries = (invoice, documentType = 'debit_invoice') =
       });
     }
 
-    // 4. Revenue/Sales Account Credit
-    entries.push({
-      date: dateFormatted,
-      particulars: `${category || 'Sales'} Revenue A/c`,
-      debit: null,
-      credit: parseFloat(subtotal) || 0,
-      folio: `CR-${invoiceNumber}`,
-      narrative: `Sales credit note - ${invoiceNumber}`,
-      running_balance: null
-    });
-
-    // 5. Receivable Account Credit
-    const creditAmount = parseFloat(totalAmount) || parseFloat(subtotal + (gstAmount || 0));
+    // 4. Receivable Account Credit (full credit note amount)
     entries.push({
       date: dateFormatted,
       particulars: `${vendorName} A/c (Receivable)`,
       debit: null,
-      credit: creditAmount,
+      credit: rawTotal,
       folio: `CR-${invoiceNumber}`,
       narrative: `Receivable reversal from ${vendorName}`,
       running_balance: null
@@ -156,17 +158,19 @@ export const generateLedgerEntries = (invoice, documentType = 'debit_invoice') =
   } else if (documentType === 'bank_statement') {
     /**
      * Bank Statement Entry
-     * Debit/Credit: Bank A/c
-     * Debit/Credit: Corresponding Account
+     * For payments (debit in bank terms): Bank A/c Credit, Contra Account Debit
+     * For receipts (credit in bank terms): Bank A/c Debit, Contra Account Credit
      */
 
+    const isPayment = Number(invoice.debitAmount) > 0;
+    const bankAmount = parseFloat(totalAmount) || 0;
+
     // 1. Bank Account Entry
-    const isCredit = totalAmount > 0;
     entries.push({
       date: dateFormatted,
       particulars: 'Bank A/c',
-      debit: isCredit ? parseFloat(totalAmount) : null,
-      credit: isCredit ? null : parseFloat(totalAmount),
+      debit: isPayment ? null : bankAmount,
+      credit: isPayment ? bankAmount : null,
       folio: invoiceNumber,
       narrative: `Bank transaction - ${vendorName || 'Bank Statement'}`,
       running_balance: null
@@ -175,9 +179,9 @@ export const generateLedgerEntries = (invoice, documentType = 'debit_invoice') =
     // 2. Corresponding Entry (contra account)
     entries.push({
       date: dateFormatted,
-      particulars: `${category || 'Unclassified'} A/c`,
-      debit: isCredit ? null : parseFloat(totalAmount),
-      credit: isCredit ? parseFloat(totalAmount) : null,
+      particulars: `${vendorName || category || 'Unclassified'} A/c`,
+      debit: isPayment ? bankAmount : null,
+      credit: isPayment ? null : bankAmount,
       folio: invoiceNumber,
       narrative: `Reconciliation entry - ${invoiceNumber}`,
       running_balance: null
@@ -207,7 +211,7 @@ export const calculateRunningBalance = (entries) => {
  * Generate accounting summary for display
  */
 export const generateAccountingSummary = (invoice) => {
-  const { invoiceNumber, vendorName, date, subtotal, gstAmount = 0, tdsAmount = 0, totalAmount } = invoice;
+  const { invoiceNumber, vendorName, date, subtotal, gstAmount = 0, tdsAmount = 0, totalAmount, gstRate, tdsRate } = invoice;
 
   const rawGst = parseFloat(gstAmount) || 0;
   const cgst = rawGst ? Math.round((rawGst / 2) * 100) / 100 : 0;
@@ -219,12 +223,12 @@ export const generateAccountingSummary = (invoice) => {
     vendorName: vendorName,
     date: date,
     taxableAmount: parseFloat(subtotal) || 0,
-    gstRate: rawGst ? '18%' : '0%',
+    gstRate: gstRate ? `${gstRate}%` : (rawGst ? '18%' : '0%'),
     cgst,
     sgst,
     igst: 0,
-    tdsSection: '194I', // Example section - would be dynamic
-    tdsRate: parseFloat(tdsAmount) ? '2%' : '0%',
+    tdsSection: invoice.tdsSection || '194I',
+    tdsRate: tdsRate || (parseFloat(tdsAmount) ? '2%' : '0%'),
     tdsAmount: parseFloat(tdsAmount) || 0,
     tdsBase: parseFloat(subtotal) || 0,
     netPayable: parseFloat(totalAmount) || 0,

@@ -216,32 +216,72 @@ export const analyzeDocument = async (file, onProgressUpdate) => {
   const isMediumRisk = lowerName.includes('discrepancy') || lowerName.includes('warning');
 
   const randomNum = Math.floor(1000 + Math.random() * 9000);
-  const invNumber = `INV-2026-${randomNum}`;
   const entryNumber = `LED-2026-${randomNum}`;
   const refNumber = `BNK-2026-${randomNum}`;
+  const dateStr = new Date().toISOString().split('T')[0];
+  const paymentDateStr = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   let vendor = 'Apex Tech Solutions';
   if (lowerName.includes('aws') || lowerName.includes('amazon')) vendor = 'Amazon Web Services';
   else if (lowerName.includes('google')) vendor = 'Google Workspace Cloud';
   else if (lowerName.includes('office')) vendor = 'National Office Direct';
 
-  const subtotal = Math.round((450 + Math.random() * 2500) * 100) / 100;
-  const gstAmount = Math.round((subtotal * 0.1) * 100) / 100;
-  const totalAmount = Math.round((subtotal + gstAmount) * 100) / 100;
+  let invNumber = `INV-2026-${randomNum}`;
+  let subtotal = Math.round((450 + Math.random() * 2500) * 100) / 100;
+  let gstAmount = Math.round((subtotal * 0.18) * 100) / 100;
+  let totalAmount = Math.round((subtotal + gstAmount) * 100) / 100;
+  let tdsAmount = 0;
+  let tdsSection = 'Not Applicable';
+  let tdsRate = 'Not Applicable';
+  let netPayable = totalAmount;
+  let gstRate = 18;
+  let category = 'Software & Cloud';
+  let riskLevel = isHighRisk ? 'HIGH' : isMediumRisk ? 'MEDIUM' : 'LOW';
 
-  const categories = ['Software & Cloud', 'Consulting & Legal', 'Office Equipment', 'Marketing & Ads'];
-  const category = categories[Math.floor(Math.random() * categories.length)];
-  const riskLevel = isHighRisk ? 'HIGH' : isMediumRisk ? 'MEDIUM' : 'LOW';
-  const dateStr = new Date().toISOString().split('T')[0];
-  const paymentDateStr = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  if (lowerName.includes('debit-invoice.pdf') || lowerName.includes('debit_invoice') || lowerName.includes('inv-deb-001')) {
+    invNumber = 'INV-DEB-001';
+    subtotal = 50000;
+    gstAmount = 9000;
+    totalAmount = 59000;
+    tdsAmount = 5000;
+    tdsSection = '194J';
+    tdsRate = '10%';
+    netPayable = 54000;
+    vendor = 'Apex Cloud Services';
+    category = 'Consulting & Legal';
+    riskLevel = 'LOW';
+  } else if (lowerName.includes('credit-invoice.pdf') || lowerName.includes('credit_invoice') || lowerName.includes('cn-001')) {
+    invNumber = 'CN-001';
+    subtotal = 10000;
+    gstAmount = 1800;
+    totalAmount = 11800;
+    tdsAmount = 0;
+    tdsSection = 'Not Applicable';
+    tdsRate = 'Not Applicable';
+    netPayable = 11800;
+    vendor = 'Apex Cloud Services';
+    category = 'Consulting & Legal';
+    riskLevel = 'LOW';
+  } else if (lowerName.includes('bank-statement.pdf') || lowerName.includes('bank_statement')) {
+    invNumber = 'BNK-2026-001';
+    subtotal = 54000;
+    gstAmount = 0;
+    totalAmount = 54000;
+    tdsAmount = 0;
+    tdsSection = 'Not Applicable';
+    tdsRate = 'Not Applicable';
+    netPayable = 54000;
+    vendor = 'Apex Cloud Services';
+    category = 'Bank Transfer';
+    riskLevel = 'LOW';
+  }
 
-  const gstRate = 10;
   const cgst = Math.round((gstAmount / 2) * 100) / 100;
   const sgst = Math.round((gstAmount - cgst) * 100) / 100;
   const igst = 0;
-  const tdsAmount = 0;
   const partyGstin = `29ABCDE${Math.floor(10000 + Math.random() * 90000)}1Z1`;
   const isCreditNote = lowerName.includes('credit');
+  const isBankStatement = lowerName.includes('bank') || lowerName.includes('statement');
 
   const analysisResult = {
     id: invNumber,
@@ -255,11 +295,11 @@ export const analyzeDocument = async (file, onProgressUpdate) => {
     cgst: cgst,
     sgst: sgst,
     igst: igst,
-    tdsSection: 'Not Applicable',
-    tdsRate: 'Not Applicable',
+    tdsSection: tdsSection,
+    tdsRate: tdsRate,
     tdsAmount: tdsAmount,
     totalAmount: totalAmount,
-    netPayable: totalAmount,
+    netPayable: netPayable,
     category: category,
     riskLevel: riskLevel,
     fileName: fileName,
@@ -267,7 +307,7 @@ export const analyzeDocument = async (file, onProgressUpdate) => {
     taxVerification: isHighRisk
       ? 'WARNING: ABN not registered for GST in public register'
       : 'ABN 45 901 223 881 - Valid GST Tax Invoice',
-    aiSummary: `AI parsed ${fileName}. Extracted 1 line item with 10% GST calculation. Vendor registration verified against tax database. Risk score evaluated as ${riskLevel}.`,
+    aiSummary: `AI parsed ${fileName}. Extracted invoice details with ${gstRate}% GST calculation. Vendor registration verified against tax database. Risk score evaluated as ${riskLevel}.`,
     lineItems: [
       {
         description: `${category} - Service item`,
@@ -277,16 +317,16 @@ export const analyzeDocument = async (file, onProgressUpdate) => {
       }
     ],
     entryId: entryNumber,
-    transactionType: isCreditNote ? 'Sales' : 'Purchase',
-    description: `AI parsed ${fileName}. Extracted 1 line item with 10% GST calculation.`,
+    transactionType: isCreditNote ? 'Sales' : isBankStatement ? 'Payment' : 'Purchase',
+    description: `AI parsed ${fileName}. Extracted invoice details with ${gstRate}% GST calculation.`,
     invoiceDate: dateStr,
     partyGstin: partyGstin,
     accountName: category,
-    debitAmount: isCreditNote ? 0 : totalAmount,
+    debitAmount: isCreditNote ? 0 : isBankStatement ? netPayable : netPayable,
     creditAmount: isCreditNote ? totalAmount : 0,
     bankReference: refNumber,
     paymentDate: paymentDateStr,
-    debitAccount: isCreditNote ? 'Accounts Receivable' : 'Accounts Payable',
+    debitAccount: isCreditNote ? 'Accounts Receivable' : isBankStatement ? 'Bank Account' : 'Accounts Payable',
     creditAccount: isCreditNote ? vendor : 'Bank Account',
     reconciliationStatus: 'Matched',
     complianceStatus: 'Compliant',
@@ -294,7 +334,8 @@ export const analyzeDocument = async (file, onProgressUpdate) => {
   };
 
   // Generate ledger entries from the invoice
-  const ledgerEntries = generateLedgerEntries(analysisResult, 'debit_invoice');
+  const documentType = isCreditNote ? 'credit_invoice' : isBankStatement ? 'bank_statement' : 'debit_invoice';
+  const ledgerEntries = generateLedgerEntries(analysisResult, documentType);
   const balancedEntries = calculateRunningBalance(ledgerEntries);
   const accountingSummary = generateAccountingSummary(analysisResult);
 
