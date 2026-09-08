@@ -197,6 +197,36 @@ export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
     tds: result.tds + invoice.tds,
   }), { taxable: 0, gst: 0, tds: 0 });
 
+  const ledgerTaxTotals = useMemo(() => {
+    const allEntries = Array.isArray(normalizedLedgerEntries) ? normalizedLedgerEntries : [];
+
+    const sumDebitFor = (keywords) => {
+      return allEntries.reduce((sum, entry) => {
+        const particulars = String(entry.particulars || '').toLowerCase();
+        const matches = keywords.some(kw => particulars.includes(kw.toLowerCase()));
+        const debit = Number(entry.debit) || 0;
+        return matches ? sum + debit : sum;
+      }, 0);
+    };
+
+    const inputCgst = sumDebitFor(['CGST Input Tax Credit A/c']);
+    const inputSgst = sumDebitFor(['SGST Input Tax Credit A/c']);
+    const cgstReversal = sumDebitFor(['CGST Reversal A/c']);
+    const sgstReversal = sumDebitFor(['SGST Reversal A/c']);
+    const tds = sumDebitFor(['TDS Payable A/c']);
+
+    const netGst = Math.round(((inputCgst + inputSgst) - (cgstReversal + sgstReversal)) * 100) / 100;
+
+    return {
+      gst: netGst,
+      tds: Math.round(tds * 100) / 100,
+      inputCgst: Math.round(inputCgst * 100) / 100,
+      inputSgst: Math.round(inputSgst * 100) / 100,
+      cgstReversal: Math.round(cgstReversal * 100) / 100,
+      sgstReversal: Math.round(sgstReversal * 100) / 100,
+    };
+  }, [normalizedLedgerEntries]);
+
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     if (setActiveDashboardTab) {
@@ -218,10 +248,10 @@ export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
       </header>
 
       <section className="dashboard-metrics mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric label="Total tax liability" value={money(totals.gst - totals.tds)} detail="GST payable after TDS" icon={ArrowUpRight} tone="metric-emerald" />
-        <Metric label="GST claimable" value={money(totals.gst)} detail="Input tax credit identified" icon={ReceiptIndianRupee} tone="metric-indigo" />
-        <Metric label="TDS deducted" value={money(totals.tds)} detail="Withholding tax recorded" icon={Banknote} tone="metric-amber" />
+        <Metric label="Net GST claimable" value={money(ledgerTaxTotals.gst)} detail="Input tax credit after reversals" icon={ArrowUpRight} tone="metric-emerald" />
+        <Metric label="TDS deducted" value={money(ledgerTaxTotals.tds)} detail="Withholding tax recorded" icon={Banknote} tone="metric-amber" />
         <Metric label="Documents processed" value={normalizedInvoices.length + normalizedStatements.length} detail="Invoices and statements" icon={FileText} tone="metric-sky" />
+        <Metric label="Ledger entries" value={String(normalizedLedgerEntries.length)} detail="Journal lines posted" icon={ReceiptIndianRupee} tone="metric-indigo" />
       </section>
 
       <section className="dashboard-tabs rounded-2xl border border-slate-800/90 bg-slate-900/50 p-2 shadow-xl shadow-slate-950/20">
@@ -238,7 +268,7 @@ export default function TaxDashboard({ onOpenUpload, userId = 'usr_101' }) {
       ) : activeTab === 'ledger' ? (
         <LedgerTable entries={normalizedLedgerEntries} />
       ) : activeTab === 'tax' ? (
-        <TaxTable invoices={normalizedInvoices} totals={totals} />
+        <TaxTable invoices={normalizedInvoices} totals={ledgerTaxTotals} />
       ) : (
         <BankTable statements={normalizedStatements} />
       )}
@@ -312,17 +342,17 @@ const TaxTable = ({ invoices, totals }) => {
   const handleDownload = () => {
     downloadCSV(
       'tax_position.csv',
-      ['Document', 'Taxable value', 'GST claimable', 'TDS deducted', 'Net liability'],
-      invoices.map(inv => [inv.number, inv.taxable, inv.gst, inv.tds, inv.gst - inv.tds])
+      ['Document', 'Taxable value', 'GST claimable', 'TDS deducted'],
+      invoices.map(inv => [inv.number, inv.taxable, inv.gst, inv.tds])
     );
   };
 
   return (
-  <TableShell title="Tax position" subtitle={`GST ${money(totals.gst)} / TDS ${money(totals.tds)} across processed invoices`} count={invoices.length} onDownload={invoices.length > 0 ? handleDownload : undefined}>
+  <TableShell title="Tax position" subtitle={`Net GST ${money(totals.gst)} / TDS ${money(totals.tds)} from ledger entries`} count={invoices.length} onDownload={invoices.length > 0 ? handleDownload : undefined}>
     <table className="w-full min-w-[700px] text-left text-sm">
       <thead className="bg-slate-950/60 text-[11px] uppercase tracking-wider text-slate-500">
         <tr>
-          {['Document', 'Taxable value', 'GST claimable', 'TDS deducted', 'Net liability'].map((label) => (
+          {['Document', 'Taxable value', 'GST claimable', 'TDS deducted'].map((label) => (
             <th key={label} className="px-5 py-3 font-semibold">{label}</th>
           ))}
         </tr>
@@ -337,7 +367,6 @@ const TaxTable = ({ invoices, totals }) => {
             <td className="px-5 py-4 font-mono text-slate-300">{money(invoice.taxable)}</td>
             <td className="px-5 py-4 font-mono text-emerald-300">{money(invoice.gst)}</td>
             <td className="px-5 py-4 font-mono text-amber-300">{money(invoice.tds)}</td>
-            <td className="px-5 py-4 font-mono font-semibold text-white">{money(invoice.gst - invoice.tds)}</td>
           </tr>
         ))}
       </tbody>
